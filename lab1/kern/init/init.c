@@ -28,8 +28,8 @@ int kern_init(void)
     // grade_backtrace();
 
     idt_init();  // init interrupt descriptor table
-    __asm__ __volatile__("ebreak");
-    __asm__ __volatile__("mret");
+    //__asm__ __volatile__("ebreak");
+    //__asm__ __volatile__("mret");
 
     // rdtime in mbare mode crashes
     clock_init();  // init clock interrupt

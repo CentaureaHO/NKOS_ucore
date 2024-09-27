@@ -4,6 +4,9 @@
 #include <stdio.h>
 #include <string.h>
 
+//__asm__ ("mret");
+//__asm__("ebreak");
+
 /* *
  * Space or zero padding and a field width are supported for the numeric
  * formats only.

@@ -10,6 +10,10 @@
 #include <trap.h>
 #include <sbi.h>
 
+//__asm__ ("ebreak");
+//__asm__ ("mret");
+
+
 #define TICK_NUM 100
 volatile size_t num         = 0;
 volatile size_t tick_counts = 0;

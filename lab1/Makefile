@@ -162,7 +162,7 @@ TARGETS: $(TARGETS)
 
 .PHONY: qemu spike
 qemu: $(UCOREIMG) $(SWAPIMG) $(SFSIMG)
-	$(V)time $(QEMU) -kernel $(UCOREIMG) -nographic -machine virt
+	$(V)time $(QEMU) -kernel $(UCOREIMG) -nographic -machine virt -bios default
 #	$(V)$(QEMU) \
 		-machine virt \
 		-nographic \
