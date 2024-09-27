@@ -13,8 +13,8 @@ typedef struct
 {
     unsigned int        expires;  // the expire time
     struct proc_struct* proc;     // the proc wait in this timer. If the expire time is end, then this proc will be
-                               // scheduled
-    list_entry_t timer_link;  // the timer list
+                                  // scheduled
+    list_entry_t timer_link;      // the timer list
 } timer_t;
 
 #define le2timer(le, member) to_struct((le), timer_t, member)

@@ -66,6 +66,7 @@ int cputs(const char* str)
 int getchar(void)
 {
     int c;
-    while ((c = cons_getc()) == 0) /* do nothing */;
+    while ((c = cons_getc()) == 0) /* do nothing */
+        ;
     return c;
 }

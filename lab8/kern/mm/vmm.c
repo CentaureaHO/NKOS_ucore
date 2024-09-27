@@ -438,7 +438,7 @@ int do_pgfault(struct mm_struct* mm, uint_t error_code, uintptr_t addr)
         }
     }
     else
-    {   // if this pte is a swap entry, then load data from disk to a page with phy addr
+    {  // if this pte is a swap entry, then load data from disk to a page with phy addr
         // and call page_insert to map the phy addr with logical addr
         /*LAB3 EXERCISE 3: YOUR CODE
          * 请你根据以下信息提示，补充函数

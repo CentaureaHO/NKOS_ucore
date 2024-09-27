@@ -247,7 +247,8 @@ void vprintfmt(void (*putch)(int, void*, int), int fd, void* putdat, const char*
             // unrecognized escape sequence - just print it literally
             default:
                 putch('%', putdat, fd);
-                for (fmt--; fmt[-1] != '%'; fmt--) /* do nothing */;
+                for (fmt--; fmt[-1] != '%'; fmt--) /* do nothing */
+                    ;
                 break;
         }
     }

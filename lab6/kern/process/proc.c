@@ -501,7 +501,7 @@ static int load_icode(unsigned char* binary, size_t size)
         ret = -E_NO_MEM;
 
         //(3.6) alloc memory, and  copy the contents of every program section (from, from+end) to process's memory (la,
-        //la+end)
+        // la+end)
         end = ph->p_va + ph->p_filesz;
         //(3.6.1) copy TEXT/DATA section of bianry program
         while (start < end)
