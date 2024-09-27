@@ -1,11 +1,12 @@
 #include <ulib.h>
 #include <stdio.h>
 
-int
-main(void) {
+int main(void)
+{
     int i;
     cprintf("Hello, I am process %d.\n", getpid());
-    for (i = 0; i < 5; i ++) {
+    for (i = 0; i < 5; i++)
+    {
         yield();
         cprintf("Back in process %d, iteration %d.\n", getpid(), i);
     }
@@ -13,4 +14,3 @@ main(void) {
     cprintf("yield pass.\n");
     return 0;
 }
-

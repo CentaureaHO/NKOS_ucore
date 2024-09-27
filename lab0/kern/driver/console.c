@@ -17,8 +17,9 @@ void cons_putc(int c) { sbi_console_putchar((unsigned char)c); }
  * cons_getc - return the next input character from console,
  * or 0 if none waiting.
  * */
-int cons_getc(void) {
+int cons_getc(void)
+{
     int c = 0;
-    c = sbi_console_getchar();
+    c     = sbi_console_getchar();
     return c;
 }

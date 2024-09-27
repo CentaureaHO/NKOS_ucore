@@ -4,10 +4,10 @@
 #include <defs.h>
 #include <unistd.h>
 
-struct dirent {
+struct dirent
+{
     off_t offset;
-    char name[FS_MAX_FNAME_LEN + 1];
+    char  name[FS_MAX_FNAME_LEN + 1];
 };
 
 #endif /* !__LIBS_DIRENT_H__ */
-

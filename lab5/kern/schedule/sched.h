@@ -4,7 +4,6 @@
 #include <proc.h>
 
 void schedule(void);
-void wakeup_proc(struct proc_struct *proc);
+void wakeup_proc(struct proc_struct* proc);
 
 #endif /* !__KERN_SCHEDULE_SCHED_H__ */
-

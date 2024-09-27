@@ -5,18 +5,19 @@
 #include <mmu.h>
 #include <riscv.h>
 
-static inline bool __intr_save(void) {
-    if (read_csr(sstatus) & SSTATUS_SIE) {
+static inline bool __intr_save(void)
+{
+    if (read_csr(sstatus) & SSTATUS_SIE)
+    {
         intr_disable();
         return 1;
     }
     return 0;
 }
 
-static inline void __intr_restore(bool flag) {
-    if (flag) {
-        intr_enable();
-    }
+static inline void __intr_restore(bool flag)
+{
+    if (flag) { intr_enable(); }
 }
 
 #define local_intr_save(x) \

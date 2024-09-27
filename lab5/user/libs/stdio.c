@@ -6,10 +6,10 @@
  * cputch - writes a single character @c to stdout, and it will
  * increace the value of counter pointed by @cnt.
  * */
-static void
-cputch(int c, int *cnt) {
+static void cputch(int c, int* cnt)
+{
     sys_putc(c);
-    (*cnt) ++;
+    (*cnt)++;
 }
 
 /* *
@@ -21,8 +21,8 @@ cputch(int c, int *cnt) {
  * Call this function if you are already dealing with a va_list.
  * Or you probably want cprintf() instead.
  * */
-int
-vcprintf(const char *fmt, va_list ap) {
+int vcprintf(const char* fmt, va_list ap)
+{
     int cnt = 0;
     vprintfmt((void*)cputch, &cnt, fmt, ap);
     return cnt;
@@ -34,8 +34,8 @@ vcprintf(const char *fmt, va_list ap) {
  * The return value is the number of characters which would be
  * written to stdout.
  * */
-int
-cprintf(const char *fmt, ...) {
+int cprintf(const char* fmt, ...)
+{
     va_list ap;
 
     va_start(ap, fmt);
@@ -49,14 +49,11 @@ cprintf(const char *fmt, ...) {
  * cputs- writes the string pointed by @str to stdout and
  * appends a newline character.
  * */
-int
-cputs(const char *str) {
-    int cnt = 0;
+int cputs(const char* str)
+{
+    int  cnt = 0;
     char c;
-    while ((c = *str ++) != '\0') {
-        cputch(c, &cnt);
-    }
+    while ((c = *str++) != '\0') { cputch(c, &cnt); }
     cputch('\n', &cnt);
     return cnt;
 }
-

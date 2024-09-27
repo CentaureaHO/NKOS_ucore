@@ -2,7 +2,7 @@
 #define __LIBS_DEFS_H__
 
 #ifndef NULL
-#define NULL ((void *)0)
+#define NULL ((void*)0)
 #endif
 
 #define __always_inline inline __attribute__((always_inline))
@@ -16,13 +16,13 @@ typedef int bool;
 #define false (0)
 
 /* Explicitly-sized versions of integer types */
-typedef char int8_t;
-typedef unsigned char uint8_t;
-typedef short int16_t;
-typedef unsigned short uint16_t;
-typedef int int32_t;
-typedef unsigned int uint32_t;
-typedef long long int64_t;
+typedef char               int8_t;
+typedef unsigned char      uint8_t;
+typedef short              int16_t;
+typedef unsigned short     uint16_t;
+typedef int                int32_t;
+typedef unsigned int       uint32_t;
+typedef long long          int64_t;
 typedef unsigned long long uint64_t;
 
 /* *
@@ -31,11 +31,11 @@ typedef unsigned long long uint64_t;
  * uintptr_t to represent the numerical values of addresses.
  * */
 #if __riscv_xlen == 64
-  typedef int64_t sint_t;
-  typedef uint64_t uint_t;
+typedef int64_t  sint_t;
+typedef uint64_t uint_t;
 #elif __riscv_xlen == 32
-  typedef int32_t sint_t;
-  typedef uint32_t uint_t;
+typedef int32_t  sint_t;
+typedef uint32_t uint_t;
 #endif
 typedef sint_t intptr_t;
 typedef uint_t uintptr_t;
@@ -50,20 +50,21 @@ typedef size_t ppn_t;
  * Rounding operations (efficient when n is a power of 2)
  * Round down to the nearest multiple of n
  * */
-#define ROUNDDOWN(a, n) ({                                          \
-            size_t __a = (size_t)(a);                               \
-            (typeof(a))(__a - __a % (n));                           \
-        })
+#define ROUNDDOWN(a, n)               \
+    ({                                \
+        size_t __a = (size_t)(a);     \
+        (typeof(a))(__a - __a % (n)); \
+    })
 
 /* Round up to the nearest multiple of n */
-#define ROUNDUP(a, n) ({                                            \
-            size_t __n = (size_t)(n);                               \
-            (typeof(a))(ROUNDDOWN((size_t)(a) + __n - 1, __n));     \
-        })
+#define ROUNDUP(a, n)                                       \
+    ({                                                      \
+        size_t __n = (size_t)(n);                           \
+        (typeof(a))(ROUNDDOWN((size_t)(a) + __n - 1, __n)); \
+    })
 
 /* Return the offset of 'member' relative to the beginning of a struct type */
-#define offsetof(type, member)                                      \
-    ((size_t)(&((type *)0)->member))
+#define offsetof(type, member) ((size_t)(&((type*)0)->member))
 
 /* *
  * to_struct - get the struct from a ptr
@@ -71,8 +72,6 @@ typedef size_t ppn_t;
  * @type:   the type of the struct this is embedded in
  * @member: the name of the member within the struct
  * */
-#define to_struct(ptr, type, member)                               \
-    ((type *)((char *)(ptr) - offsetof(type, member)))
+#define to_struct(ptr, type, member) ((type*)((char*)(ptr) - offsetof(type, member)))
 
 #endif /* !__LIBS_DEFS_H__ */
-

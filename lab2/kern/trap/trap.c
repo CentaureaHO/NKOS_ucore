@@ -11,7 +11,8 @@
 
 #define TICK_NUM 100
 
-static void print_ticks() {
+static void print_ticks()
+{
     cprintf("%d ticks\n", TICK_NUM);
 #ifdef DEBUG_GRADE
     cprintf("End of Test.\n");
@@ -21,7 +22,8 @@ static void print_ticks() {
 
 /* idt_init - initialize IDT to each of the entry points in kern/trap/vectors.S
  */
-void idt_init(void) {
+void idt_init(void)
+{
     /* LAB1 YOUR CODE : STEP 2 */
     /* (1) Where are the entry addrs of each Interrupt Service Routine (ISR)?
      *     All ISR's entry addrs are stored in __vectors. where is uintptr_t
@@ -52,11 +54,10 @@ void idt_init(void) {
 }
 
 /* trap_in_kernel - test if trap happened in kernel */
-bool trap_in_kernel(struct trapframe *tf) {
-    return (tf->status & SSTATUS_SPP) != 0;
-}
+bool trap_in_kernel(struct trapframe* tf) { return (tf->status & SSTATUS_SPP) != 0; }
 
-void print_trapframe(struct trapframe *tf) {
+void print_trapframe(struct trapframe* tf)
+{
     cprintf("trapframe at %p\n", tf);
     print_regs(&tf->gpr);
     cprintf("  status   0x%08x\n", tf->status);
@@ -65,7 +66,8 @@ void print_trapframe(struct trapframe *tf) {
     cprintf("  cause    0x%08x\n", tf->cause);
 }
 
-void print_regs(struct pushregs *gpr) {
+void print_regs(struct pushregs* gpr)
+{
     cprintf("  zero     0x%08x\n", gpr->zero);
     cprintf("  ra       0x%08x\n", gpr->ra);
     cprintf("  sp       0x%08x\n", gpr->sp);
@@ -100,24 +102,16 @@ void print_regs(struct pushregs *gpr) {
     cprintf("  t6       0x%08x\n", gpr->t6);
 }
 
-void interrupt_handler(struct trapframe *tf) {
+void interrupt_handler(struct trapframe* tf)
+{
     intptr_t cause = (tf->cause << 1) >> 1;
-    switch (cause) {
-        case IRQ_U_SOFT:
-            cprintf("User software interrupt\n");
-            break;
-        case IRQ_S_SOFT:
-            cprintf("Supervisor software interrupt\n");
-            break;
-        case IRQ_H_SOFT:
-            cprintf("Hypervisor software interrupt\n");
-            break;
-        case IRQ_M_SOFT:
-            cprintf("Machine software interrupt\n");
-            break;
-        case IRQ_U_TIMER:
-            cprintf("User Timer interrupt\n");
-            break;
+    switch (cause)
+    {
+        case IRQ_U_SOFT: cprintf("User software interrupt\n"); break;
+        case IRQ_S_SOFT: cprintf("Supervisor software interrupt\n"); break;
+        case IRQ_H_SOFT: cprintf("Hypervisor software interrupt\n"); break;
+        case IRQ_M_SOFT: cprintf("Machine software interrupt\n"); break;
+        case IRQ_U_TIMER: cprintf("User Timer interrupt\n"); break;
         case IRQ_S_TIMER:
             // "All bits besides SSIP and USIP in the sip register are
             // read-only." -- privileged spec1.9.1, 4.1.4, p59
@@ -126,71 +120,47 @@ void interrupt_handler(struct trapframe *tf) {
             // cprintf("Supervisor timer interrupt\n");
             // clear_csr(sip, SIP_STIP);
             clock_set_next_event();
-            if (++ticks % TICK_NUM == 0) {
-                print_ticks();
-            }
+            if (++ticks % TICK_NUM == 0) { print_ticks(); }
             break;
-        case IRQ_H_TIMER:
-            cprintf("Hypervisor software interrupt\n");
-            break;
-        case IRQ_M_TIMER:
-            cprintf("Machine software interrupt\n");
-            break;
-        case IRQ_U_EXT:
-            cprintf("User software interrupt\n");
-            break;
-        case IRQ_S_EXT:
-            cprintf("Supervisor external interrupt\n");
-            break;
-        case IRQ_H_EXT:
-            cprintf("Hypervisor software interrupt\n");
-            break;
-        case IRQ_M_EXT:
-            cprintf("Machine software interrupt\n");
-            break;
-        default:
-            print_trapframe(tf);
-            break;
+        case IRQ_H_TIMER: cprintf("Hypervisor software interrupt\n"); break;
+        case IRQ_M_TIMER: cprintf("Machine software interrupt\n"); break;
+        case IRQ_U_EXT: cprintf("User software interrupt\n"); break;
+        case IRQ_S_EXT: cprintf("Supervisor external interrupt\n"); break;
+        case IRQ_H_EXT: cprintf("Hypervisor software interrupt\n"); break;
+        case IRQ_M_EXT: cprintf("Machine software interrupt\n"); break;
+        default: print_trapframe(tf); break;
     }
 }
 
-void exception_handler(struct trapframe *tf) {
-    switch (tf->cause) {
-        case CAUSE_MISALIGNED_FETCH:
-            break;
-        case CAUSE_FAULT_FETCH:
-            break;
-        case CAUSE_ILLEGAL_INSTRUCTION:
-            break;
-        case CAUSE_BREAKPOINT:
-            break;
-        case CAUSE_MISALIGNED_LOAD:
-            break;
-        case CAUSE_FAULT_LOAD:
-            break;
-        case CAUSE_MISALIGNED_STORE:
-            break;
-        case CAUSE_FAULT_STORE:
-            break;
-        case CAUSE_USER_ECALL:
-            break;
-        case CAUSE_SUPERVISOR_ECALL:
-            break;
-        case CAUSE_HYPERVISOR_ECALL:
-            break;
-        case CAUSE_MACHINE_ECALL:
-            break;
-        default:
-            print_trapframe(tf);
-            break;
+void exception_handler(struct trapframe* tf)
+{
+    switch (tf->cause)
+    {
+        case CAUSE_MISALIGNED_FETCH: break;
+        case CAUSE_FAULT_FETCH: break;
+        case CAUSE_ILLEGAL_INSTRUCTION: break;
+        case CAUSE_BREAKPOINT: break;
+        case CAUSE_MISALIGNED_LOAD: break;
+        case CAUSE_FAULT_LOAD: break;
+        case CAUSE_MISALIGNED_STORE: break;
+        case CAUSE_FAULT_STORE: break;
+        case CAUSE_USER_ECALL: break;
+        case CAUSE_SUPERVISOR_ECALL: break;
+        case CAUSE_HYPERVISOR_ECALL: break;
+        case CAUSE_MACHINE_ECALL: break;
+        default: print_trapframe(tf); break;
     }
 }
 
-static inline void trap_dispatch(struct trapframe *tf) {
-    if ((intptr_t)tf->cause < 0) {
+static inline void trap_dispatch(struct trapframe* tf)
+{
+    if ((intptr_t)tf->cause < 0)
+    {
         // interrupts
         interrupt_handler(tf);
-    } else {
+    }
+    else
+    {
         // exceptions
         exception_handler(tf);
     }
@@ -202,7 +172,8 @@ static inline void trap_dispatch(struct trapframe *tf) {
  * the code in kern/trap/trapentry.S restores the old CPU state saved in the
  * trapframe and then uses the iret instruction to return from the exception.
  * */
-void trap(struct trapframe *tf) {
+void trap(struct trapframe* tf)
+{
     // dispatch based on what type of trap occurred
     trap_dispatch(tf);
 }

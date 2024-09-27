@@ -3,7 +3,8 @@
 
 #include <defs.h>
 
-struct pushregs {
+struct pushregs
+{
     uintptr_t zero;  // Hard-wired zero
     uintptr_t ra;    // Return address
     uintptr_t sp;    // Stack pointer
@@ -38,19 +39,19 @@ struct pushregs {
     uintptr_t t6;    // Temporary
 };
 
-struct trapframe {
+struct trapframe
+{
     struct pushregs gpr;
-    uintptr_t status;
-    uintptr_t epc;
-    uintptr_t tval;
-    uintptr_t cause;
+    uintptr_t       status;
+    uintptr_t       epc;
+    uintptr_t       tval;
+    uintptr_t       cause;
 };
 
-void trap(struct trapframe *tf);
+void trap(struct trapframe* tf);
 void idt_init(void);
-void print_trapframe(struct trapframe *tf);
+void print_trapframe(struct trapframe* tf);
 void print_regs(struct pushregs* gpr);
-bool trap_in_kernel(struct trapframe *tf);
+bool trap_in_kernel(struct trapframe* tf);
 
 #endif /* !__KERN_TRAP_TRAP_H__ */
-

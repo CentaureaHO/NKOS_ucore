@@ -3,12 +3,11 @@
 
 #include <defs.h>
 
-#define KMALLOC_MAX_ORDER       10
+#define KMALLOC_MAX_ORDER 10
 
 void kmalloc_init(void);
 
-void *kmalloc(size_t n);
-void kfree(void *objp);
+void* kmalloc(size_t n);
+void  kfree(void* objp);
 
 #endif /* !__KERN_MM_KMALLOC_H__ */
-

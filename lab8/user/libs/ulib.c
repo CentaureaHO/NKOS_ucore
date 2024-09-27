@@ -4,69 +4,36 @@
 #include <ulib.h>
 #include <stat.h>
 #include <lock.h>
-void
-exit(int error_code) {
+void exit(int error_code)
+{
     sys_exit(error_code);
     cprintf("BUG: exit failed.\n");
     while (1);
 }
 
-int
-fork(void) {
-    return sys_fork();
-}
+int fork(void) { return sys_fork(); }
 
-int
-wait(void) {
-    return sys_wait(0, NULL);
-}
+int wait(void) { return sys_wait(0, NULL); }
 
-int
-waitpid(int pid, int *store) {
-    return sys_wait(pid, store);
-}
+int waitpid(int pid, int* store) { return sys_wait(pid, store); }
 
-void
-yield(void) {
-    sys_yield();
-}
+void yield(void) { sys_yield(); }
 
-int
-kill(int pid) {
-    return sys_kill(pid);
-}
+int kill(int pid) { return sys_kill(pid); }
 
-int
-getpid(void) {
-    return sys_getpid();
-}
+int getpid(void) { return sys_getpid(); }
 
-//print_pgdir - print the PDT&PT
-void
-print_pgdir(void) {
-    sys_pgdir();
-}
+// print_pgdir - print the PDT&PT
+void print_pgdir(void) { sys_pgdir(); }
 
-unsigned int
-gettime_msec(void) {
-    return (unsigned int)sys_gettime();
-}
+unsigned int gettime_msec(void) { return (unsigned int)sys_gettime(); }
 
-void
-lab6_set_priority(uint32_t priority)
+void lab6_set_priority(uint32_t priority) { sys_lab6_set_priority(priority); }
+
+int sleep(unsigned int time) { return sys_sleep(time); }
+int __exec(const char* name, const char** argv)
 {
-    sys_lab6_set_priority(priority);
-}
-
-int
-sleep(unsigned int time) {
-    return sys_sleep(time);
-}
-int
-__exec(const char *name, const char **argv) {
     int argc = 0;
-    while (argv[argc] != NULL) {
-        argc ++;
-    }
+    while (argv[argc] != NULL) { argc++; }
     return sys_exec(name, argc, argv);
 }

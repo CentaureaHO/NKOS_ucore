@@ -13,7 +13,8 @@ void serial_intr(void) {}
 void cons_init(void) {}
 
 /* cons_putc - print a single character @c to console devices */
-void cons_putc(int c) {
+void cons_putc(int c)
+{
     bool intr_flag;
     local_intr_save(intr_flag);
     {
@@ -26,8 +27,9 @@ void cons_putc(int c) {
  * cons_getc - return the next input character from console,
  * or 0 if none waiting.
  * */
-int cons_getc(void) {
-    int c = 0;
+int cons_getc(void)
+{
+    int  c = 0;
     bool intr_flag;
     local_intr_save(intr_flag);
     {
