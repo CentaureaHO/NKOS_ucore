@@ -26,8 +26,7 @@ static void print_ticks()
 /**
  * @brief      Load supervisor trap entry in RISC-V
  */
-void idt_init(void)
-{
+void idt_init(void) {
     extern void __alltraps(void);
     /* Set sscratch register to 0, indicating to exception vector that we are
      * presently executing in the kernel */
@@ -37,10 +36,11 @@ void idt_init(void)
 }
 
 /* trap_in_kernel - test if trap happened in kernel */
-bool trap_in_kernel(struct trapframe* tf) { return (tf->status & SSTATUS_SPP) != 0; }
+bool trap_in_kernel(struct trapframe *tf) {
+    return (tf->status & SSTATUS_SPP) != 0;
+}
 
-void print_trapframe(struct trapframe* tf)
-{
+void print_trapframe(struct trapframe *tf) {
     cprintf("trapframe at %p\n", tf);
     print_regs(&tf->gpr);
     cprintf("  status   0x%08x\n", tf->status);
@@ -49,8 +49,7 @@ void print_trapframe(struct trapframe* tf)
     cprintf("  cause    0x%08x\n", tf->cause);
 }
 
-void print_regs(struct pushregs* gpr)
-{
+void print_regs(struct pushregs *gpr) {
     cprintf("  zero     0x%08x\n", gpr->zero);
     cprintf("  ra       0x%08x\n", gpr->ra);
     cprintf("  sp       0x%08x\n", gpr->sp);
@@ -85,23 +84,31 @@ void print_regs(struct pushregs* gpr)
     cprintf("  t6       0x%08x\n", gpr->t6);
 }
 
-void interrupt_handler(struct trapframe* tf)
-{
-    intptr_t cause = (tf->cause << 1) >> 1;
-    switch (cause)
-    {
-        case IRQ_U_SOFT: cprintf("User software interrupt\n"); break;
-        case IRQ_S_SOFT: cprintf("Supervisor software interrupt\n"); break;
-        case IRQ_H_SOFT: cprintf("Hypervisor software interrupt\n"); break;
-        case IRQ_M_SOFT: cprintf("Machine software interrupt\n"); break;
-        case IRQ_U_TIMER: cprintf("User software interrupt\n"); break;
+void interrupt_handler(struct trapframe *tf) {
+    intptr_t cause = (tf->cause << 1) >> 1;//抹掉scause最高位代表“这是中断不是异常”的1
+    switch (cause) {
+        case IRQ_U_SOFT:
+            cprintf("User software interrupt\n");
+            break;
+        case IRQ_S_SOFT:
+            cprintf("Supervisor software interrupt\n");
+            break;
+        case IRQ_H_SOFT:
+            cprintf("Hypervisor software interrupt\n");
+            break;
+        case IRQ_M_SOFT:
+            cprintf("Machine software interrupt\n");
+            break;
+        case IRQ_U_TIMER:
+            cprintf("User software interrupt\n");
+            break;
         case IRQ_S_TIMER:
             // "All bits besides SSIP and USIP in the sip register are
             // read-only." -- privileged spec1.9.1, 4.1.4, p59
             // In fact, Call sbi_set_timer will clear STIP, or you can clear it
             // directly.
             // cprintf("Supervisor timer interrupt\n");
-            /* LAB1 EXERCISE2   YOUR CODE :  */
+             /* LAB1 EXERCISE2   YOUR CODE :  */
             /*(1)设置下次时钟中断- clock_set_next_event()
              *(2)计数器（ticks）加一
              *(3)当计数器加到100的时候，我们会输出一个`100ticks`表示我们触发了100次时钟中断，同时打印次数（num）加一
@@ -117,66 +124,71 @@ void interrupt_handler(struct trapframe* tf)
                 if (num == 10) { sbi_shutdown(); }
             }
             break;
-        case IRQ_H_TIMER: cprintf("Hypervisor software interrupt\n"); break;
-        case IRQ_M_TIMER: cprintf("Machine software interrupt\n"); break;
-        case IRQ_U_EXT: cprintf("User software interrupt\n"); break;
-        case IRQ_S_EXT: cprintf("Supervisor external interrupt\n"); break;
-        case IRQ_H_EXT: cprintf("Hypervisor software interrupt\n"); break;
-        case IRQ_M_EXT: cprintf("Machine software interrupt\n"); break;
-        default: print_trapframe(tf); break;
     }
 }
 
-void exception_handler(struct trapframe* tf)
-{
-    switch (tf->cause)
-    {
-        case CAUSE_MISALIGNED_FETCH: break;
-        case CAUSE_FAULT_FETCH: break;
+void exception_handler(struct trapframe *tf) {
+    switch (tf->cause) {
+        case CAUSE_MISALIGNED_FETCH:
+            break;
+        case CAUSE_FAULT_FETCH:
+            break;
         case CAUSE_ILLEGAL_INSTRUCTION:
-            // 非法指令异常处理
-            /* LAB1 CHALLENGE3   YOUR CODE :  */
+             // 非法指令异常处理
+             /* LAB1 CHALLENGE3   YOUR CODE :  */
             /*(1)输出指令异常类型（ Illegal instruction）
              *(2)输出异常指令地址
              *(3)更新 tf->epc寄存器
-             */
+            */
+           cprintf("异常类型:llegal instruction\n");
+           cprintf("Illegal instruction caught at 0x%08x\n", tf->epc);
+           tf->epc+=4;
             cprintf("Illegal instruction caught at 0x%x\n", tf->epc);
             cprintf("Exception type: Illegal instruction\n");
             tf->epc += 4;
             break;
         case CAUSE_BREAKPOINT:
-            // 断点异常处理
+            //断点异常处理
             /* LAB1 CHALLLENGE3   YOUR CODE :  */
             /*(1)输出指令异常类型（ breakpoint）
              *(2)输出异常指令地址
              *(3)更新 tf->epc寄存器
-             */
+            */
+           cprintf("异常类型:breakpoint\n");
+            cprintf("ebreak caught at 0x%08x\n", tf->epc);
+            tf->epc+=2;
+            break;
+        case CAUSE_MISALIGNED_LOAD:
+            break;
+        case CAUSE_FAULT_LOAD:
+            break;
+        case CAUSE_MISALIGNED_STORE:
+            break;
+        case CAUSE_FAULT_STORE:
+            break;
+        case CAUSE_USER_ECALL:
+            break;
+        case CAUSE_SUPERVISOR_ECALL:
+            break;
+        case CAUSE_HYPERVISOR_ECALL:
+            break;
+        case CAUSE_MACHINE_ECALL:
+            break;
+        default:
+            print_trapframe(tf);
             cprintf("ebreak caught at 0x%x\n", tf->epc);
             cprintf("Exception type: breakpoint\n");
             tf->epc += 2;
             break;
-        case CAUSE_MISALIGNED_LOAD: break;
-        case CAUSE_FAULT_LOAD: break;
-        case CAUSE_MISALIGNED_STORE: break;
-        case CAUSE_FAULT_STORE: break;
-        case CAUSE_USER_ECALL: break;
-        case CAUSE_SUPERVISOR_ECALL: break;
-        case CAUSE_HYPERVISOR_ECALL: break;
-        case CAUSE_MACHINE_ECALL: break;
-        default: print_trapframe(tf); break;
     }
 }
 
 /* trap_dispatch - dispatch based on what type of trap occurred */
-static inline void trap_dispatch(struct trapframe* tf)
-{
-    if ((intptr_t)tf->cause < 0)
-    {
+static inline void trap_dispatch(struct trapframe *tf) {
+    if ((intptr_t)tf->cause < 0) {//如果scause的最高位是1，说明trap是由中断引起的
         // interrupts
         interrupt_handler(tf);
-    }
-    else
-    {
+    } else {
         // exceptions
         exception_handler(tf);
     }
@@ -188,4 +200,4 @@ static inline void trap_dispatch(struct trapframe* tf)
  * the code in kern/trap/trapentry.S restores the old CPU state saved in the
  * trapframe and then uses the iret instruction to return from the exception.
  * */
-void trap(struct trapframe* tf) { trap_dispatch(tf); }
+void trap(struct trapframe *tf) { trap_dispatch(tf); }
