@@ -755,6 +755,13 @@ static inline void lcr3(unsigned int cr3) { write_csr(sptbr, cr3 >> RISCV_PGSHIF
 #define CSR_SEPC 0x141
 #define CSR_SCAUSE 0x142
 #define CSR_SBADADDR 0x143
+
+#define sbadaddr CSR_SBADADDR
+// 构建ucore.img时提示在trapentry.S中找不到这个sbadaddr
+// 且我找不到DECLARE_CSR(name, addr)的定义
+// 且令我很困惑的是，别的定义都可以找到，只有这个找不到
+// 因此提前补充此定义
+
 #define CSR_SIP 0x144
 #define CSR_SPTBR 0x180
 #define CSR_MSTATUS 0x300
@@ -1190,6 +1197,7 @@ DECLARE_CSR(stvec, CSR_STVEC)
 DECLARE_CSR(sscratch, CSR_SSCRATCH)
 DECLARE_CSR(sepc, CSR_SEPC)
 DECLARE_CSR(scause, CSR_SCAUSE)
+DECLARE_CSR(i_dont_know_why_could_not_this_declare_be_used_so_i_declare_another, CSR_SBADADDR)
 DECLARE_CSR(sbadaddr, CSR_SBADADDR)
 DECLARE_CSR(sip, CSR_SIP)
 DECLARE_CSR(sptbr, CSR_SPTBR)

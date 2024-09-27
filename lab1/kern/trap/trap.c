@@ -11,7 +11,8 @@
 #include <sbi.h>
 
 #define TICK_NUM 100
-volatile size_t num = 0;
+volatile size_t num         = 0;
+volatile size_t tick_counts = 0;
 
 static void print_ticks()
 {
@@ -106,6 +107,15 @@ void interrupt_handler(struct trapframe* tf)
              *(3)当计数器加到100的时候，我们会输出一个`100ticks`表示我们触发了100次时钟中断，同时打印次数（num）加一
              * (4)判断打印次数，当打印次数为10时，调用<sbi.h>中的关机函数关机
              */
+            clock_set_next_event();
+            ++tick_counts;
+            if (tick_counts == TICK_NUM)
+            {
+                cprintf("100 ticks\n");
+                ++num;
+                tick_counts = 0;
+                if (num == 10) { sbi_shutdown(); }
+            }
             break;
         case IRQ_H_TIMER: cprintf("Hypervisor software interrupt\n"); break;
         case IRQ_M_TIMER: cprintf("Machine software interrupt\n"); break;
@@ -130,6 +140,9 @@ void exception_handler(struct trapframe* tf)
              *(2)输出异常指令地址
              *(3)更新 tf->epc寄存器
              */
+            cprintf("Illegal instruction caught at 0x%x\n", tf->epc);
+            cprintf("Exception type: Illegal instruction\n");
+            tf->epc += 4;
             break;
         case CAUSE_BREAKPOINT:
             // 断点异常处理
@@ -138,6 +151,9 @@ void exception_handler(struct trapframe* tf)
              *(2)输出异常指令地址
              *(3)更新 tf->epc寄存器
              */
+            cprintf("ebreak caught at 0x%x\n", tf->epc);
+            cprintf("Exception type: breakpoint\n");
+            tf->epc += 2;
             break;
         case CAUSE_MISALIGNED_LOAD: break;
         case CAUSE_FAULT_LOAD: break;

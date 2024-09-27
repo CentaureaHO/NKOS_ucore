@@ -36,6 +36,7 @@ CTYPE	:= c S
 
 LD      := $(GCCPREFIX)ld
 LDFLAGS	:= -m elf64lriscv
+# nostdlib: no standard library to run on bare metal
 LDFLAGS	+= -nostdlib --gc-sections
 
 OBJCOPY := $(GCCPREFIX)objcopy
@@ -161,8 +162,8 @@ TARGETS: $(TARGETS)
 
 .PHONY: qemu spike
 qemu: $(UCOREIMG) $(SWAPIMG) $(SFSIMG)
-#	$(V)$(QEMU) -kernel $(UCOREIMG) -nographic
-	$(V)$(QEMU) \
+	$(V)time $(QEMU) -kernel $(UCOREIMG) -nographic -machine virt
+#	$(V)$(QEMU) \
 		-machine virt \
 		-nographic \
 		-bios default \
@@ -170,10 +171,10 @@ qemu: $(UCOREIMG) $(SWAPIMG) $(SFSIMG)
 
 debug: $(UCOREIMG) $(SWAPIMG) $(SFSIMG)
 	$(V)$(QEMU) \
+		-kernel $(UCOREIMG) \
 		-machine virt \
 		-nographic \
 		-bios default \
-		-device loader,file=$(UCOREIMG),addr=0x80200000\
 		-s -S
 
 gdb:

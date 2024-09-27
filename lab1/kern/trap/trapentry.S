@@ -41,6 +41,7 @@
     # get sr, epc, badvaddr, cause
     # Set sscratch register to 0, so that if a recursive exception
     # occurs, the exception vector knows it came from the kernel
+    // 无法找到sbadaddr，因此稍微修改了riscv.h
     csrrw s0, sscratch, x0
     csrr s1, sstatus
     csrr s2, sepc
