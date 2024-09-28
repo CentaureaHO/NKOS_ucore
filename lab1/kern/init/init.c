@@ -17,17 +17,18 @@ int kern_init(void)
 {
     extern char edata[], end[];
     memset(edata, 0, end - edata);
-
+    //__asm__ __volatile__("ebreak");
     cons_init();  // init the console
-
+    //__asm__ __volatile__("ebreak");
     const char* message = "(THU.CST) os is loading ...\n";
     cprintf("%s\n\n", message);
 
     print_kerninfo();
 
     // grade_backtrace();
-
+    //__asm__ __volatile__("ebreak");
     idt_init();  // init interrupt descriptor table
+    //__asm__ __volatile__("ebreak");
     //__asm__ __volatile__("ebreak");
     //__asm__ __volatile__("mret");
 

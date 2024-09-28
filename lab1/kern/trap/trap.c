@@ -150,7 +150,7 @@ void exception_handler(struct trapframe* tf)
              */
             cprintf("ebreak caught at 0x%x\n", tf->epc);
             cprintf("Exception type: breakpoint\n");
-            tf->epc += 2;
+            tf->epc += 2;       // ebreak属于压缩指令集C，仅占用2字节
             break;
         case CAUSE_MISALIGNED_LOAD: break;
         case CAUSE_FAULT_LOAD: break;
@@ -175,11 +175,13 @@ static inline void trap_dispatch(struct trapframe* tf)
     if ((intptr_t)tf->cause < 0)
     {  // 如果scause的最高位是1，说明trap是由中断引起的
         // interrupts
+        // cprintf("Interrupt\n");
         interrupt_handler(tf);
     }
     else
     {
         // exceptions
+        // cprintf("Exception\n");
         exception_handler(tf);
     }
 }

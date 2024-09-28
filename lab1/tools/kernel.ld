@@ -10,8 +10,8 @@ SECTIONS
     /* Load the kernel at this address: "." means the current address */
     . = BASE_ADDRESS;
 
-    .text : {
-        *(.text.kern_entry)
+    .text : {       /* 起始地址为80200000 */
+        *(.text.kern_entry)     /* kern_entry为起始地址往后第一段要链接的程序，因此放置到80200000 */
         *(.text .stub .text.* .gnu.linkonce.t.*)
     }
 
@@ -22,7 +22,11 @@ SECTIONS
     }
 
     /* Adjust the address for the data segment to the next page */
-    . = ALIGN(0x1000);
+    . = ALIGN(0x1000);      /* 对齐到4K，随后划分内核栈 */
+                            /* 对齐后地址直接划归bootstack */
+                            /* 随后往后保留KSATCKSIZE个bytes */
+                            /* 将bootstack + KSATCKSIZE / 4的位置划归bootstacktop */
+                            /* 中间即为预留的内核栈 */
 
     /* The data segment */
     .data : {
