@@ -20,14 +20,13 @@ uint64_t sbi_call(uint64_t sbi_type, uint64_t arg0, uint64_t arg1, uint64_t arg2
                      "mv x12, %[arg2]\n"
                      "ecall\n"
                      //"ebreak\n"
-                   //  "mret\n"
+                     //  "mret\n"
                      "mv %[ret_val], x10"
                      : [ret_val] "=r"(ret_val)
                      : [sbi_type] "r"(sbi_type), [arg0] "r"(arg0), [arg1] "r"(arg1), [arg2] "r"(arg2)
                      : "memory");
     return ret_val;
 }
-
 
 int  sbi_console_getchar(void) { return sbi_call(SBI_CONSOLE_GETCHAR, 0, 0, 0); }
 void sbi_console_putchar(unsigned char ch) { sbi_call(SBI_CONSOLE_PUTCHAR, ch, 0, 0); }

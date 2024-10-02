@@ -1,2 +1,6 @@
 lab[0-9]*/bin/
 lab[0-9]*/obj/
+lab[0-9]*/.gdb.in
+lab[0-9]*/.qemu.out
+lab[0-9]*/.score
+lab[0-9]*/.projectile

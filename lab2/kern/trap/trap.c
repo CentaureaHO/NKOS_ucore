@@ -8,8 +8,14 @@
 #include <riscv.h>
 #include <stdio.h>
 #include <trap.h>
+#include <sbi.h>
+
+//__asm__ ("ebreak");
+//__asm__ ("mret");
 
 #define TICK_NUM 100
+volatile size_t num         = 0;
+volatile size_t tick_counts = 0;
 
 static void print_ticks()
 {
@@ -20,34 +26,14 @@ static void print_ticks()
 #endif
 }
 
-/* idt_init - initialize IDT to each of the entry points in kern/trap/vectors.S
+/**
+ * @brief      Load supervisor trap entry in RISC-V
  */
 void idt_init(void)
 {
-    /* LAB1 YOUR CODE : STEP 2 */
-    /* (1) Where are the entry addrs of each Interrupt Service Routine (ISR)?
-     *     All ISR's entry addrs are stored in __vectors. where is uintptr_t
-     * __vectors[] ?
-     *     __vectors[] is in kern/trap/vector.S which is produced by
-     * tools/vector.c
-     *     (try "make" command in lab1, then you will find vector.S in kern/trap
-     * DIR)
-     *     You can use  "extern uintptr_t __vectors[];" to define this extern
-     * variable which will be used later.
-     * (2) Now you should setup the entries of ISR in Interrupt Description
-     * Table (IDT).
-     *     Can you see idt[256] in this file? Yes, it's IDT! you can use SETGATE
-     * macro to setup each item of IDT
-     * (3) After setup the contents of IDT, you will let CPU know where is the
-     * IDT by using 'lidt' instruction.
-     *     You don't know the meaning of this instruction? just google it! and
-     * check the libs/x86.h to know more.
-     *     Notice: the argument of lidt is idt_pd. try to find it!
-     */
-
     extern void __alltraps(void);
-    /* Set sup0 scratch register to 0, indicating to exception vector
-       that we are presently executing in the kernel */
+    /* Set sscratch register to 0, indicating to exception vector that we are
+     * presently executing in the kernel */
     write_csr(sscratch, 0);
     /* Set the exception vector address */
     write_csr(stvec, &__alltraps);
@@ -104,31 +90,25 @@ void print_regs(struct pushregs* gpr)
 
 void interrupt_handler(struct trapframe* tf)
 {
-    intptr_t cause = (tf->cause << 1) >> 1;
+    intptr_t cause = (tf->cause << 1) >> 1;  // 抹掉scause最高位代表“这是中断不是异常”的1
     switch (cause)
     {
         case IRQ_U_SOFT: cprintf("User software interrupt\n"); break;
         case IRQ_S_SOFT: cprintf("Supervisor software interrupt\n"); break;
         case IRQ_H_SOFT: cprintf("Hypervisor software interrupt\n"); break;
         case IRQ_M_SOFT: cprintf("Machine software interrupt\n"); break;
-        case IRQ_U_TIMER: cprintf("User Timer interrupt\n"); break;
+        case IRQ_U_TIMER: cprintf("User software interrupt\n"); break;
         case IRQ_S_TIMER:
-            // "All bits besides SSIP and USIP in the sip register are
-            // read-only." -- privileged spec1.9.1, 4.1.4, p59
-            // In fact, Call sbi_set_timer will clear STIP, or you can clear it
-            // directly.
-            // cprintf("Supervisor timer interrupt\n");
-            // clear_csr(sip, SIP_STIP);
             clock_set_next_event();
-            if (++ticks % TICK_NUM == 0) { print_ticks(); }
+            ++tick_counts;
+            if (tick_counts == TICK_NUM)
+            {
+                cprintf("100 ticks\n");
+                ++num;
+                tick_counts = 0;
+                // if (num == 10) { sbi_shutdown(); }
+            }
             break;
-        case IRQ_H_TIMER: cprintf("Hypervisor software interrupt\n"); break;
-        case IRQ_M_TIMER: cprintf("Machine software interrupt\n"); break;
-        case IRQ_U_EXT: cprintf("User software interrupt\n"); break;
-        case IRQ_S_EXT: cprintf("Supervisor external interrupt\n"); break;
-        case IRQ_H_EXT: cprintf("Hypervisor software interrupt\n"); break;
-        case IRQ_M_EXT: cprintf("Machine software interrupt\n"); break;
-        default: print_trapframe(tf); break;
     }
 }
 
@@ -138,8 +118,16 @@ void exception_handler(struct trapframe* tf)
     {
         case CAUSE_MISALIGNED_FETCH: break;
         case CAUSE_FAULT_FETCH: break;
-        case CAUSE_ILLEGAL_INSTRUCTION: break;
-        case CAUSE_BREAKPOINT: break;
+        case CAUSE_ILLEGAL_INSTRUCTION:
+            cprintf("Illegal instruction caught at 0x%x\n", tf->epc);
+            cprintf("Exception type: Illegal instruction\n");
+            tf->epc += 4;
+            break;
+        case CAUSE_BREAKPOINT:
+            cprintf("ebreak caught at 0x%x\n", tf->epc);
+            cprintf("Exception type: breakpoint\n");
+            tf->epc += 2;  // ebreak属于压缩指令集C，仅占用2字节
+            break;
         case CAUSE_MISALIGNED_LOAD: break;
         case CAUSE_FAULT_LOAD: break;
         case CAUSE_MISALIGNED_STORE: break;
@@ -148,20 +136,28 @@ void exception_handler(struct trapframe* tf)
         case CAUSE_SUPERVISOR_ECALL: break;
         case CAUSE_HYPERVISOR_ECALL: break;
         case CAUSE_MACHINE_ECALL: break;
-        default: print_trapframe(tf); break;
+        default:
+            print_trapframe(tf);
+            cprintf("ebreak caught at 0x%x\n", tf->epc);
+            cprintf("Exception type: breakpoint\n");
+            tf->epc += 2;
+            break;
     }
 }
 
+/* trap_dispatch - dispatch based on what type of trap occurred */
 static inline void trap_dispatch(struct trapframe* tf)
 {
     if ((intptr_t)tf->cause < 0)
-    {
+    {  // 如果scause的最高位是1，说明trap是由中断引起的
         // interrupts
+        // cprintf("Interrupt\n");
         interrupt_handler(tf);
     }
     else
     {
         // exceptions
+        // cprintf("Exception\n");
         exception_handler(tf);
     }
 }
@@ -172,8 +168,4 @@ static inline void trap_dispatch(struct trapframe* tf)
  * the code in kern/trap/trapentry.S restores the old CPU state saved in the
  * trapframe and then uses the iret instruction to return from the exception.
  * */
-void trap(struct trapframe* tf)
-{
-    // dispatch based on what type of trap occurred
-    trap_dispatch(tf);
-}
+void trap(struct trapframe* tf) { trap_dispatch(tf); }

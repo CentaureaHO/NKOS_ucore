@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# 高版本qemu启动会有些问题，但我希望保留默认使用qemu9.1.0
+# 因此添加此脚本，用于切换到qemu4.1.1
+
+export PATH=/usr/local/qemu-4.1.1/bin:$PATH

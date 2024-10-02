@@ -37,7 +37,6 @@ int kern_init(void)
 
     intr_enable();  // enable irq interrupt
 
-
     while (1);
 }
 

@@ -2,7 +2,7 @@
 
 #define BUFSIZE 1024
 static char buf[BUFSIZE];
- //__asm__ ("ebreak");
+//__asm__ ("ebreak");
 //__asm__ ("mret");
 /* *
  * readline - get a line from stdin

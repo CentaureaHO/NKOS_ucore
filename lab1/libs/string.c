@@ -1,7 +1,7 @@
 #include <string.h>
 #include <riscv.h>
-__asm__ ("ebreak");
-__asm__ ("mret");
+__asm__("ebreak");
+__asm__("mret");
 /* *
  * strlen - calculate the length of the string @s, not including
  * the terminating '\0' character.

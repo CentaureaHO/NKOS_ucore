@@ -43,7 +43,7 @@
  * list_add_before) (5.2) reset the fields of pages, such as p->ref, p->flags (PageProperty) (5.3) try to merge low addr
  * or high addr blocks. Notice: should change some pages's p->property correctly.
  */
-free_area_t free_area;
+static free_area_t free_area;  // 避免multiple definition问题  2024.10.02 2210878
 
 #define free_list (free_area.free_list)
 #define nr_free (free_area.nr_free)

@@ -144,7 +144,7 @@ run_qemu() {
     (
         
         ulimit -t $timeout
-        exec $qemu -nographic $qemuopts -serial file:$qemu_out -monitor null -no-reboot $qemuextra
+        exec $qemu -nographic $qemuopts > $qemu_out 2> $err
     ) > $out 2> $err &
     pid=$!
     echo "qemu pid=$pid"

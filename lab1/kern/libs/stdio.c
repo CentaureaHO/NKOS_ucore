@@ -4,7 +4,6 @@
 //__asm__ ("ebreak");
 //__asm__ ("mret");
 
-
 /* *
  * cputch - writes a single character @c to stdout, and it will
  * increace the value of counter pointed by @cnt.
