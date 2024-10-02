@@ -4,3 +4,4 @@ lab[0-9]*/.gdb.in
 lab[0-9]*/.qemu.out
 lab[0-9]*/.score
 lab[0-9]*/.projectile
+.vscode/
