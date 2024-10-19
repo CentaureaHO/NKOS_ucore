@@ -4,13 +4,54 @@
 #include <buddy_pmm.h>
 #include <stdio.h>
 
+#define NODE_UNUSED 0
+#define NODE_USED 1
+#define NODE_SPLIT 2
+#define NODE_FULL 3
+
+#define BUDDY_LEVEL 10                 // 设置 buddy 的级别为 10
+#define BUDDY_SIZE (1 << BUDDY_LEVEL)  // 定义 buddy 系统管理的内存大小（2 的 BUDDY_LEVEL 次方）
+
 static free_area_t free_area;  // 避免multiple definition问题  2024.10.02 2210878
 
 #define free_list (free_area.free_list)
 #define nr_free (free_area.nr_free)
 
-static void         buddy_init(void) { cprintf("buddy init is not completed\n"); }
-static void         buddy_init_memmap(struct Page* base, size_t n) { cprintf("buddy init memmap is not completed\n"); }
+static void buddy_init(void)
+{
+    list_init(&free_list);
+    nr_free = 0;  // 初始化可用页面数
+}
+static void buddy_init_memmap(struct Page* base, size_t n)
+{
+    assert(n > 0);
+    struct Page* p = base;
+    for (; p != base + n; ++p)
+    {
+        assert(PageReserved(p));
+        p->flags    = 0;
+        p->property = 0;
+        set_page_ref(p, 0);
+    }
+    base->property = n;
+    SetPageProperty(base);
+    nr_free += n;
+    if (list_empty(&free_list)) { list_add(&free_list, &(base->page_link)); }
+    else
+    {
+        list_entry_t* le = &free_list;
+        while ((le = list_next(le)) != &free_list)
+        {
+            struct Page* page = le2page(le, page_link);
+            if (base < page)
+            {
+                list_add_before(le, &(base->page_link));
+                break;
+            }
+            else if (list_next(le) == &free_list) { list_add(le, &(base->page_link)); }
+        }
+    }
+}
 static struct Page* buddy_alloc_pages(size_t n)
 {
     cprintf("buddy alloc pages is not completed\n");

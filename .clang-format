@@ -75,6 +75,7 @@ SpacesBeforeTrailingComments: 2
 ContinuationIndentWidth: 4
 CommentPragmas:  '^lint'
 MacroBlockBegin: "
+AlignConsecutiveMacros: true
 
 END_CATCH_ERROR$"
 ...
