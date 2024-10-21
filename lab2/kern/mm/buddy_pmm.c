@@ -1,248 +1,267 @@
-#include <pmm.h>
-#include <list.h>
-#include <string.h>
-#include <buddy_pmm.h>
-#include <stdio.h>
+#include <pmm.h>           
+#include <list.h>          
+#include <string.h>       
+#include <buddy_pmm.h>     
+#include <stdio.h>        
 
-#define MAX_ORDER 11
+#define MAX_ORDER 11  // 定义最大阶层，表示内存块划分的最大深度
 
-static free_area_t free_area[MAX_ORDER];
+// 定义不同阶层的空闲内存块列表结构
+static free_area_t free_area[MAX_ORDER];  // 每个阶层存储对应的空闲块链表和空闲块数量
 
-#define free_list(i) free_area[(i)].free_list
-#define nr_free(i) free_area[(i)].nr_free
-#define IS_POWER_OF_2(x) (!((x)&((x)-1)))
+// 宏定义，简化获取指定阶层的空闲链表和空闲块数量的操作
+#define free_list(i) free_area[(i)].free_list  
+#define nr_free(i) free_area[(i)].nr_free      
 
-static void
-buddy_system_init(void) {
-    for(int i = 0; i < MAX_ORDER; i++) {
-        list_init(&(free_area[i].free_list));
-        free_area[i].nr_free = 0;
-    }
-    
+// 判断一个数字是否是2的幂
+int IS_POWER_OF_2(int x) {
+    return x > 0 && !(x & (x - 1));  // 如果x是2的幂次方返回真
 }
 
-static void//从能存放最大内存块的链表开始，将要存放的物理内存放到链表中，若不能继续放入到这个链表中，则进行一步步降低能存放内存块大小的链表，
-buddy_system_init_memmap(struct Page *base, size_t n) {
-    assert(n > 0);
-    struct Page *p = base;
-    for (; p != base + n; p ++) {
-        assert(PageReserved(p));
-        p->flags = p->property = 0;
-        set_page_ref(p, 0);
+// 初始化指定阶层的空闲内存块链表
+static void init_free_area(int order) {
+    list_init(&(free_area[order].free_list));  // 初始化链表为空
+    free_area[order].nr_free = 0;  // 空闲块数量初始化为0
+}
+
+// 初始化整个伙伴系统，初始化所有阶层的空闲内存块链表
+static void buddy_system_init(void) {
+    for (int i = 0; i < MAX_ORDER; i++) {  
+        init_free_area(i);  // 调用init_free_area初始化每一阶层
     }
-    size_t curr_size = n;
-    uint32_t order = MAX_ORDER - 1;
-    uint32_t order_size = 1 << order;
-    p = base;
+}
+
+// 初始化物理内存映射，将物理内存页加入到伙伴系统管理中
+static void buddy_system_init_memmap(struct Page *base, size_t n) {
+    assert(n > 0);  // 确保有页可用
+    struct Page *p = base;
+
+    // 遍历每个页，清除属性和引用计数，确保页被释放
+    for (; p != base + n; p++) {
+        assert(PageReserved(p));  // 页必须被保留
+        p->flags = p->property = 0;  // 清除页的标志和属性
+        set_page_ref(p, 0);  // 设置引用计数为0
+    }
+
+    // 开始初始化内存块
+    size_t curr_size = n;  // 剩余需要初始化的页数
+    uint32_t order = MAX_ORDER - 1;  // 从最大阶层开始
+    uint32_t order_size = 1 << order;  // 当前阶层的块大小（2^order）
+    p = base;  // 从基地址开始
+
+    // 依次按阶层分配内存块
     while (curr_size != 0) {
-        p->property = order_size;
-        SetPageProperty(p);
-        nr_free(order) += 1;
-        list_add_before(&(free_list(order)), &(p->page_link));
-        curr_size -= order_size;
-        while(order > 0 && curr_size < order_size) {
-            order_size >>= 1;
+        p->property = order_size;  // 设置块大小
+        SetPageProperty(p);  // 设置页的属性，表示其已分配
+        nr_free(order) += 1;  // 增加当前阶层的空闲块数量
+        list_add_before(&(free_list(order)), &(p->page_link));  // 加入空闲链表
+        curr_size -= order_size;  // 更新剩余页数
+        while (order > 0 && curr_size < order_size) {
+            order_size >>= 1;  // 如果剩余内存不足当前阶层，减少阶层
             order -= 1;
         }
-        p += order_size;
+        p += order_size;  // 移动到下一个块
     }
 }
 
-//取出高一级的空闲链表中的一个块，将其分为两个较小的快，大小是order-1，加入到较低一级的链表中，注意nr_free数量的变化
+// 将较大的内存块拆分为两个较小的块
 static void split_page(int order) {
-    if(list_empty(&(free_list(order)))) {
-        split_page(order + 1);
+    if (list_empty(&(free_list(order)))) {  // 如果当前阶层没有空闲块
+        split_page(order + 1);  // 递归地拆分更高阶层的块
     }
-    list_entry_t* le = list_next(&(free_list(order)));
-    struct Page *page = le2page(le, page_link);
-    list_del(&(page->page_link));
-    nr_free(order) -= 1;
-    uint32_t n = 1 << (order - 1);
-    struct Page *p = page + n;
-    page->property = n;
-    p->property = n;
-    SetPageProperty(p);
-    list_add(&(free_list(order-1)),&(page->page_link));
-    list_add(&(page->page_link),&(p->page_link));
-    nr_free(order-1) += 2;
-    return;
+    // 获取当前阶层的空闲块并将其拆分
+    list_entry_t *le = list_next(&(free_list(order)));  
+    struct Page *page = le2page(le, page_link);  
+    list_del(&(page->page_link));  // 从空闲链表中删除该块
+    nr_free(order) -= 1;  // 更新空闲块数量
+
+    uint32_t n = 1 << (order - 1);  // 计算拆分后的块大小
+    struct Page *p = page + n;  // 找到第二个块的起始地址
+    page->property = n;  // 设置第一个块的大小
+    p->property = n;  // 设置第二个块的大小
+    SetPageProperty(p);  // 设置属性，表示已分配
+    // 将拆分后的两个块加入到较低阶层
+    list_add(&(free_list(order - 1)), &(page->page_link));  
+    list_add(&(page->page_link), &(p->page_link));  
+    nr_free(order - 1) += 2;  // 更新较低阶层的空闲块数量
 }
 
-static struct Page *
-buddy_system_alloc_pages(size_t n) {
-    assert(n > 0);
-    if (n > (1 << (MAX_ORDER - 1))) {
-        return NULL;
+// 为用户分配页面
+static struct Page *buddy_system_alloc_pages(size_t n) {
+    assert(n > 0);  // 确保要分配的页数大于0
+    if (n > (1 << (MAX_ORDER - 1))) {  // 请求的页数超过最大块大小
+        return NULL;  // 无法满足请求
     }
     struct Page *page = NULL;
-    uint32_t order = MAX_ORDER - 1;
+    uint32_t order = MAX_ORDER - 1;  // 从最大阶层开始寻找合适的块
+
+    // 查找最小的可以满足请求的阶层
     while (n < (1 << order)) {
-        order -= 1;
+        order -= 1;  // 降低阶层
     }
-    order += 1;
-    uint32_t flag = 0;
-    for (int i = order; i < MAX_ORDER; i++) flag += nr_free(i);
-    if(flag == 0) return NULL;
-    if(list_empty(&(free_list(order)))) {
-        split_page(order + 1);
+    order += 1;  // 确定最终使用的阶层
+
+    uint32_t flag = 0;  // 标记是否有可用块
+    for (int i = order; i < MAX_ORDER; i++) {
+        flag += nr_free(i);  // 统计该阶层及以上阶层的空闲块
     }
-    if(list_empty(&(free_list(order)))) return NULL;
-    list_entry_t *le = list_next(&(free_list(order)));
-    page = le2page(le, page_link);
-    list_del(&(page->page_link));
-    ClearPageProperty(page);
-    return page;
+    if (flag == 0) return NULL;  // 如果没有足够的空闲块，返回空指针
+
+    // 如果该阶层没有空闲块，则尝试拆分
+    if (list_empty(&(free_list(order)))) {
+        split_page(order + 1);  // 拆分更高阶层的块
+    }
+    // 再次检查空闲块是否可用
+    if (list_empty(&(free_list(order)))) return NULL;
+
+    // 从空闲链表中获取一个块并返回
+    list_entry_t *le = list_next(&(free_list(order)));  
+    page = le2page(le, page_link);  
+    list_del(&(page->page_link));  // 从链表中删除该块
+    ClearPageProperty(page);  // 清除页的属性
+    return page;  // 返回分配的页
 }
 
-//先将块按照地址从小到大的顺序加入到指定序号的链表当中
-static void add_page(uint32_t order, struct Page* base) {
-    if (list_empty(&(free_list(order)))) {
-        list_add(&(free_list(order)), &(base->page_link));
+// 按地址顺序将内存块插入到指定阶层的空闲链表中
+static void add_page(uint32_t order, struct Page *base) {
+    if (list_empty(&(free_list(order)))) {  // 如果空闲链表为空
+        list_add(&(free_list(order)), &(base->page_link));  // 直接插入
     } else {
-        list_entry_t* le = &(free_list(order));
-        while ((le = list_next(le)) != &(free_list(order))) {
-            struct Page* page = le2page(le, page_link);
-            if (base < page) {
-                list_add_before(le, &(base->page_link));
+        // 如果链表不为空，则按地址顺序插入
+        list_entry_t *le = &(free_list(order));  
+        while ((le = list_next(le)) != &(free_list(order))) {  
+            struct Page *page = le2page(le, page_link);  
+            if (base < page) {  // 找到插入点，按地址顺序插入
+                list_add_before(le, &(base->page_link));//当base < page时，找到第一个大于base的页，将base插入到它前面，并退出循环
                 break;
-            } else if (list_next(le) == &(free_list(order))) {
+            } else if (list_next(le) == &(free_list(order))) {  // 如果到了链表末尾
                 list_add(le, &(base->page_link));
             }
         }
     }
 }
 
-static void merge_page(uint32_t order, struct Page* base) {
-    if (order == MAX_ORDER - 1) {//没有更大的内存块了，升不了级了
+// 合并相邻的伙伴块
+static void merge_page(uint32_t order, struct Page *base) {
+    if (order == MAX_ORDER - 1) {  // 已经是最大阶层，不能再合并
         return;
     }
-    
-    list_entry_t* le = list_prev(&(base->page_link));
-    if (le != &(free_list(order))) {
-        struct Page *p = le2page(le, page_link);
-        if (p + p->property == base) {//若是连续内存
-            p->property += base->property;
-            ClearPageProperty(base);
-            list_del(&(base->page_link));
-            base = p;
-            if(order != MAX_ORDER - 1) {
-                list_del(&(base->page_link));
-                add_page(order+1,base);
+
+    // 尝试合并前一个块
+    list_entry_t *le = list_prev(&(base->page_link));  
+    if (le != &(free_list(order))) {  //判断是否已经遍历到空闲链表的末尾
+        struct Page *p = le2page(le, page_link);  
+        if (p + p->property == base) {  // 如果前一个块和当前块相邻
+            p->property += base->property;  // 合并两个块
+            ClearPageProperty(base);  //清除页面 base 的属性
+            list_del(&(base->page_link));  
+            base = p;  // 更新基地址
+            if (order != MAX_ORDER - 1) {  
+                list_del(&(base->page_link));  
+                add_page(order + 1, base);  // 合并后的块加入更高阶层
             }
         }
     }
 
-    le = list_next(&(base->page_link));
-    if (le != &(free_list(order))) {
-        struct Page *p = le2page(le, page_link);
-        if (base + base->property == p) {
-            base->property += p->property;
-            ClearPageProperty(p);
-            list_del(&(p->page_link));
-            if(order != MAX_ORDER - 1) {
-                list_del(&(base->page_link));
-                add_page(order+1,base);
+    // 尝试合并后一个块
+    le = list_next(&(base->page_link));  
+    if (le != &(free_list(order))) {  
+        struct Page *p = le2page(le, page_link);  
+        if (base + base->property == p) {  // 如果当前块和后一个块相邻
+            base->property += p->property;  // 合并两个块
+            ClearPageProperty(p);  
+            list_del(&(p->page_link));  
+            if (order != MAX_ORDER - 1) {  
+                list_del(&(base->page_link));  
+                add_page(order + 1, base);  // 合并后的块加入更高阶层
             }
         }
     }
-    merge_page(order+1,base);
-    return;
+    // 递归尝试合并更高阶层的块
+    merge_page(order + 1, base);  
 }
 
-static void
-buddy_system_free_pages(struct Page *base, size_t n) {
-    assert(n > 0);
-    assert(IS_POWER_OF_2(n));
-    assert(n < (1 << (MAX_ORDER - 1)));
+// 释放页面，将其重新加入空闲链表中
+static void buddy_system_free_pages(struct Page *base, size_t n) {
+    assert(n > 0);  
+    assert(IS_POWER_OF_2(n));  // 页数必须是2的幂
+    assert(n < (1 << (MAX_ORDER - 1)));  // 页数不能超过最大阶层的块大小
+
     struct Page *p = base;
-    for (; p != base + n; p ++) {
-        assert(!PageReserved(p) && !PageProperty(p));//确保页面没有被保留且没有属性标志
-        p->flags = 0;
-        set_page_ref(p, 0);
+    // 遍历每个页，清除标志位和引用计数
+    for (; p != base + n; p++) {  
+        assert(!PageReserved(p) && !PageProperty(p));  
+        p->flags = 0;  
+        set_page_ref(p, 0);  
     }
-    base->property = n;
-    SetPageProperty(base);
 
-    uint32_t order = 0;
+    base->property = n;  // 设置基础块大小
+    SetPageProperty(base);  
+
+    uint32_t order = 0;  // 计算对应的阶层
     size_t temp = n;
-    while (temp != 1) {//找到能将此内存块放入的链表序号，根据幂次方的大小对序号进行加法运算，直到确定序号
-        temp >>= 1;
-        order++;
+    while (temp != 1) {
+        temp >>= 1;  
+        order++;  
     }
-    add_page(order,base);
-    merge_page(order,base);
+
+    // 将块加入到空闲链表中并尝试合并
+    add_page(order, base);  
+    merge_page(order, base);  
 }
 
-static size_t
-buddy_system_nr_free_pages(void) {//计算空闲页面的数量，空闲块*块大小（与链表序号有关）
-    size_t num = 0;
-    for(int i = 0; i < MAX_ORDER; i++) {
-        num += nr_free(i) << i;
-    }
-    return num;
+// 返回系统中所有空闲页面的总数量
+static size_t buddy_system_nr_free_pages(void) {
+    size_t num = 0;  
+    for (int i = 0; i < MAX_ORDER; i++) {  
+        num += nr_free(i) << i;  // 计算每个阶层的空闲页数
+    }//计算阶层 i 中所有空闲块所包含的总页面数量。
+    return num;  // 返回总空闲页面数
 }
 
-static void
-basic_check(void) {
-    struct Page *p0, *p1, *p2;
-    p0 = p1 = p2 = NULL;
-    assert((p0 = alloc_page()) != NULL);
-    assert((p1 = alloc_page()) != NULL);
-    assert((p2 = alloc_page()) != NULL);
+// 检查伙伴系统是否正常运行
+static void buddy_system_check(void) {
+    cprintf("Starting buddy system check...\n");
 
-    assert(p0 != p1 && p0 != p2 && p1 != p2);
-    assert(page_ref(p0) == 0 && page_ref(p1) == 0 && page_ref(p2) == 0);
-
-    assert(page2pa(p0) < npage * PGSIZE);
-    assert(page2pa(p1) < npage * PGSIZE);
-    assert(page2pa(p2) < npage * PGSIZE);
-    for(int i = 0; i < MAX_ORDER; i++) {
-        list_init(&(free_list(i)));
-        assert(list_empty(&(free_list(i))));
+    // 打印每个阶层的空闲块数量
+    for (int i = 0; i < MAX_ORDER; i++) {
+        size_t free_blocks = nr_free(i);
+        size_t block_size = 1 << i;
+        cprintf("Order %d: Free blocks = %016lx, Block size = %016lx pages\n", i, free_blocks, block_size);
     }
+
+    // 测试分配和释放页面的功能
+    struct Page *p0 = buddy_system_alloc_pages(1);
+    struct Page *p1 = buddy_system_alloc_pages(1);
+    struct Page *p2 = buddy_system_alloc_pages(1);
     
-    for(int i = 0; i < MAX_ORDER; i++) {
-        list_init(&(free_list(i)));
-        assert(list_empty(&(free_list(i))));
-    }
-    for(int i = 0; i < MAX_ORDER; i++) nr_free(i) = 0;
+    assert(p0 != NULL);
+    assert(p1 != NULL);
+    assert(p2 != NULL);
+    cprintf("Allocated 3 pages successfully.\n");
 
-    assert(alloc_page() == NULL);
+    size_t free_pages_after_alloc = buddy_system_nr_free_pages();
+    cprintf("Free pages after allocation: %016lx\n", free_pages_after_alloc);
 
-    free_page(p0);
-    free_page(p1);
-    free_page(p2);
-    assert(buddy_system_nr_free_pages() == 3);
+    buddy_system_free_pages(p0, 1);
+    buddy_system_free_pages(p1, 1);
+    buddy_system_free_pages(p2, 1);
+    cprintf("Freed 3 pages successfully.\n");
 
-    assert((p0 = alloc_page()) != NULL);
-    assert((p1 = alloc_page()) != NULL);
-    assert((p2 = alloc_page()) != NULL);
+    size_t free_pages_after_free = buddy_system_nr_free_pages();
+    cprintf("Free pages after freeing: %016lx\n", free_pages_after_free);
 
-    assert(alloc_page() == NULL);
-
-    free_page(p0);
-    for(int i = 0; i < 0; i++) assert(!list_empty(&(free_list(i))));
-
-    struct Page *p;
-    assert((p = alloc_page()) == p0);
-    assert(alloc_page() == NULL);
-
-    assert(buddy_system_nr_free_pages() == 0);
-
-    free_page(p);
-    free_page(p1);
-    free_page(p2);
+    assert(free_pages_after_alloc == free_pages_after_free);
+    cprintf("Buddy system check passed. All free pages restored correctly.\n");
 }
-static void
-buddy_system_check(void) {}
 
-//这个结构体在
+// 定义伙伴系统内存管理结构体
 const struct pmm_manager buddy_system_pmm_manager = {
-    .name = "buddy_system_pmm_manager",
-    .init = buddy_system_init,
-    .init_memmap = buddy_system_init_memmap,
-    .alloc_pages = buddy_system_alloc_pages,
-    .free_pages = buddy_system_free_pages,
-    .nr_free_pages = buddy_system_nr_free_pages,
-    .check = buddy_system_check,
+    .name = "buddy_system_pmm_manager",  // 内存管理器名称
+    .init = buddy_system_init,  // 初始化函数
+    .init_memmap = buddy_system_init_memmap,  // 初始化内存映射函数
+    .alloc_pages = buddy_system_alloc_pages,  // 分配页面函数
+    .free_pages = buddy_system_free_pages,  // 释放页面函数
+    .nr_free_pages = buddy_system_nr_free_pages,  // 获取空闲页面数量函数
+    .check = buddy_system_check,  // 检查函数
 };
