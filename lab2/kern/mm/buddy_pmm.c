@@ -299,7 +299,7 @@ static void buddy_system_check(void) {
     // 尝试再分配一个页面，应当成功，因为还有剩余的空闲页面
     struct Page *p4 = buddy_system_alloc_pages(n);
     assert(p4 == NULL);
-    cprintf("通过了最大页的测试。\n");
+    cprintf("无法生成两个相同的最大块\n,因此，通过了最大页的测试。\n");
 
 
     // 释放最大块
