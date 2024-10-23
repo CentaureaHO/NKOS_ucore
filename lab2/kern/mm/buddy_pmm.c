@@ -3,7 +3,7 @@
 #include <string.h>
 #include <buddy_pmm.h>
 #include <stdio.h>
-#define MAX_ORDER 15  // 定义最大阶层，表示内存块划分的最大深度
+#define MAX_ORDER 11  // 定义最大阶层，表示内存块划分的最大深度
 
 // 定义不同阶层的空闲内存块列表结构
 static free_area_t free_area[MAX_ORDER];  // 每个阶层存储对应的空闲块链表和空闲块数量
@@ -145,8 +145,6 @@ static struct Page *buddy_system_alloc_pages(size_t n) {
 static void add_page(uint32_t order, struct Page *base) {
     list_add(&(free_list(order)), &(base->page_link));
 }
-
-// 合并相邻的伙伴块
 // 合并相邻的伙伴块
 static void merge_page(uint32_t order, struct Page *base) {
     if (order >= MAX_ORDER - 1) {
@@ -227,7 +225,7 @@ static size_t buddy_system_nr_free_pages(void) {
 // 检查伙伴系统是否正常运行
 static void buddy_system_check(void) {
     size_t total_free_pages = buddy_system_nr_free_pages();
-    cprintf("开始伙伴系统检查：total_free_pages = %d\n", total_free_pages);
+    cprintf("开始伙伴系统检查:total_free_pages = %d\n", total_free_pages);
 
     // 分配一个页面
     struct Page *p0 = buddy_system_alloc_pages(1);
@@ -264,7 +262,7 @@ static void buddy_system_check(void) {
     size_t free_pages_after_free2 = buddy_system_nr_free_pages();
     assert(free_pages_after_free2 == total_free_pages);
 
-    cprintf("单个页面的分配和释放测试通过。\n");
+    cprintf("accept_test1:单个页面的分配和释放测试通过。\n");
 
     // 现在尝试分配一个页面块
     size_t n = 4; // 尝试分配4个页面
@@ -284,22 +282,22 @@ static void buddy_system_check(void) {
     size_t free_pages_after_free_n = buddy_system_nr_free_pages();
     assert(free_pages_after_free_n == total_free_pages);
 
-    cprintf("分配和释放%d个页面的测试通过。\n", n);
+    cprintf("accept_test2:分配和释放多个页面的测试通过。\n");
 
     // 尝试分配最大可能的块
     n = 1 << (MAX_ORDER - 1); // 最大块大小
     struct Page *p3 = buddy_system_alloc_pages(n);
     assert(p3 != NULL);
-    cprintf("分配了最大块大小%d个页面。\n", n);
+    cprintf("成功分配了最大块大小%d个页面。\n", n);
 
     // 检查空闲页面数量是否减少了n
     size_t free_pages_after_alloc_max = buddy_system_nr_free_pages();
     assert(free_pages_after_alloc_max == total_free_pages - n);
 
-    // 尝试再分配一个页面，应当成功，因为还有剩余的空闲页面
-    struct Page *p4 = buddy_system_alloc_pages(n);
+    // 尝试再分配一个比最大允许分配的内存更大的页面，应当失败，因为单次内存的申请不允许超过最大限制
+    struct Page *p4 = buddy_system_alloc_pages(n+1);
     assert(p4 == NULL);
-    cprintf("无法生成两个相同的最大块\n,因此，通过了最大页的测试。\n");
+    cprintf("尝试分配比最大允许申请的页更大的%d页失败\naccept_test3:一次无法分配超过最大限制的页，通过了最大页的测试。\n",n+1);
 
 
     // 释放最大块
@@ -313,7 +311,7 @@ static void buddy_system_check(void) {
     // 检查空闲页面数量是否恢复到初始值
     size_t free_pages_after_free_max = buddy_system_nr_free_pages();
     assert(free_pages_after_free_max == total_free_pages);
-    cprintf("最大块的分配和释放测试通过。\n");
+    cprintf("accept_test4:最大块的分配和释放测试通过。\n");
 
     cprintf("所有伙伴系统检查均通过。\n");
 }
