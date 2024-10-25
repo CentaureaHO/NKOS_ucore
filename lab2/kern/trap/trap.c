@@ -33,7 +33,7 @@ void idt_init(void)
 {
     extern void __alltraps(void);
     /* Set sscratch register to 0, indicating to exception vector that we are
-     * presently executing in the kernel */
+     * presently executing in the kernel */https://my.nankai.edu.cn/jkxy/ly/list.htm
     write_csr(sscratch, 0);
     /* Set the exception vector address */
     write_csr(stvec, &__alltraps);

@@ -248,7 +248,7 @@ static void buddy_system_check(void) {
 
     // 释放第一个页面
     buddy_system_free_pages(p0, 1);
-    cprintf("释放了第一个分配的页面。\n");
+    cprintf("释放了第1个分配的页面。\n");
 
     // 检查空闲页面数量是否增加了1
     size_t free_pages_after_free1 = buddy_system_nr_free_pages();
@@ -256,7 +256,7 @@ static void buddy_system_check(void) {
 
     // 释放第二个页面
     buddy_system_free_pages(p1, 1);
-    cprintf("释放了第二个分配的页面。\n");
+    cprintf("释放了第2个分配的页面。\n");
 
     // 检查空闲页面数量是否又增加了1，应当恢复到初始值
     size_t free_pages_after_free2 = buddy_system_nr_free_pages();
