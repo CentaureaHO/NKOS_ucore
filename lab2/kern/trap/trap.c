@@ -20,8 +20,6 @@
 #define TICK_NUM 100
 volatile size_t num         = 0;
 volatile size_t tick_counts = 0;
-volatile size_t num         = 0;
-volatile size_t tick_counts = 0;
 
 static void print_ticks()
 {
@@ -32,8 +30,6 @@ static void print_ticks()
 #endif
 }
 
-/**
- * @brief      Load supervisor trap entry in RISC-V
 /**
  * @brief      Load supervisor trap entry in RISC-V
  */
@@ -99,14 +95,12 @@ void print_regs(struct pushregs* gpr)
 void interrupt_handler(struct trapframe* tf)
 {
     intptr_t cause = (tf->cause << 1) >> 1;  // 抹掉scause最高位代表“这是中断不是异常”的1
-    intptr_t cause = (tf->cause << 1) >> 1;  // 抹掉scause最高位代表“这是中断不是异常”的1
     switch (cause)
     {
         case IRQ_U_SOFT: cprintf("User software interrupt\n"); break;
         case IRQ_S_SOFT: cprintf("Supervisor software interrupt\n"); break;
         case IRQ_H_SOFT: cprintf("Hypervisor software interrupt\n"); break;
         case IRQ_M_SOFT: cprintf("Machine software interrupt\n"); break;
-        case IRQ_U_TIMER: cprintf("User software interrupt\n"); break;
         case IRQ_U_TIMER: cprintf("User software interrupt\n"); break;
         case IRQ_S_TIMER:
             clock_set_next_event();
@@ -128,11 +122,6 @@ void exception_handler(struct trapframe* tf)
     {
         case CAUSE_MISALIGNED_FETCH: break;
         case CAUSE_FAULT_FETCH: break;
-        case CAUSE_ILLEGAL_INSTRUCTION:
-            cprintf("Illegal instruction caught at 0x%x\n", tf->epc);
-            cprintf("Exception type: Illegal instruction\n");
-            tf->epc += 4;
-            break;
         case CAUSE_BREAKPOINT:
             cprintf("ebreak caught at 0x%x\n", tf->epc);
             cprintf("Exception type: breakpoint\n");
@@ -142,11 +131,6 @@ void exception_handler(struct trapframe* tf)
             cprintf("Illegal instruction caught at 0x%x\n", tf->epc);
             cprintf("Exception type: Illegal instruction\n");
             tf->epc += 4;
-            break;
-        case CAUSE_BREAKPOINT:
-            cprintf("ebreak caught at 0x%x\n", tf->epc);
-            cprintf("Exception type: breakpoint\n");
-            tf->epc += 2;  // ebreak属于压缩指令集C，仅占用2字节
             break;
         case CAUSE_MISALIGNED_LOAD: break;
         case CAUSE_FAULT_LOAD: break;
@@ -162,12 +146,6 @@ void exception_handler(struct trapframe* tf)
             cprintf("Exception type: breakpoint\n");
             tf->epc += 2;
             break;
-        default:
-            print_trapframe(tf);
-            cprintf("ebreak caught at 0x%x\n", tf->epc);
-            cprintf("Exception type: breakpoint\n");
-            tf->epc += 2;
-            break;
     }
 }
 
@@ -176,7 +154,6 @@ void exception_handler(struct trapframe* tf)
 static inline void trap_dispatch(struct trapframe* tf)
 {
     if ((intptr_t)tf->cause < 0)
-    {  // 如果scause的最高位是1，说明trap是由中断引起的
     {  // 如果scause的最高位是1，说明trap是由中断引起的
         // interrupts
         // cprintf("Interrupt\n");
