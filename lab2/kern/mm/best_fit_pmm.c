@@ -82,6 +82,10 @@ static void best_fit_init_memmap(struct Page* base, size_t n)
             /* LAB2 EXERCISE 2: 2210878 2210983 2213040 */
             // 编写代码
             // 1、当base < page时，找到第一个大于base的页，将base插入到它前面，并退出循环
+            if(base<page)
+            {
+                list_add_before(le,&(base->page_link));
+            }
             // 2、当list_next(le) == &free_list时，若已经到达链表结尾，将base插入到链表尾部
             if (base < page)
             {
@@ -249,7 +253,6 @@ static void basic_check(void)
     free_page(p1);
     free_page(p2);
 }
-
 // LAB2: below code is used to check the best fit allocation algorithm
 // NOTICE: You SHOULD NOT CHANGE basic_check, default_check functions!
 static void best_fit_check(void)
