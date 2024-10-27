@@ -1,6 +1,7 @@
 #include <default_pmm.h>
 #include <best_fit_pmm.h>
 #include <buddy_pmm.h>
+#include <slub_pmm.h>
 #include <defs.h>
 #include <error.h>
 #include <memlayout.h>
@@ -11,6 +12,10 @@
 #include <string.h>
 #include <../sync/sync.h>
 #include <riscv.h>
+
+#ifndef PHYSICAL_MEMORY_OFFSET
+#define PHYSICAL_MEMORY_OFFSET 0xFFFFFFFF40000000
+#endif
 
 // virtual address of physical page array
 struct Page* pages;
@@ -108,7 +113,8 @@ static void page_init(void)
     uintptr_t freemem = PADDR((uintptr_t)pages + sizeof(struct Page) * (npage - nbase));
 
     mem_begin = ROUNDUP(freemem, PGSIZE);
-    mem_end   = ROUNDDOWN(mem_end, PGSIZE);
+    mem_end   = ROUNDDOWN(mem_end, PGSIZE) - 1;
+    cprintf("free memory: [0x%016lx, 0x%016lx]\n", mem_begin, mem_end);
     if (freemem < mem_end) { init_memmap(pa2page(mem_begin), (mem_end - mem_begin) / PGSIZE); }
 }
 

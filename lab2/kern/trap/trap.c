@@ -12,6 +12,10 @@
 
 //__asm__ ("ebreak");
 //__asm__ ("mret");
+#include <sbi.h>
+
+//__asm__ ("ebreak");
+//__asm__ ("mret");
 
 #define TICK_NUM 100
 volatile size_t num         = 0;
@@ -118,15 +122,15 @@ void exception_handler(struct trapframe* tf)
     {
         case CAUSE_MISALIGNED_FETCH: break;
         case CAUSE_FAULT_FETCH: break;
-        case CAUSE_ILLEGAL_INSTRUCTION:
-            cprintf("Illegal instruction caught at 0x%x\n", tf->epc);
-            cprintf("Exception type: Illegal instruction\n");
-            tf->epc += 4;
-            break;
         case CAUSE_BREAKPOINT:
             cprintf("ebreak caught at 0x%x\n", tf->epc);
             cprintf("Exception type: breakpoint\n");
             tf->epc += 2;  // ebreak属于压缩指令集C，仅占用2字节
+            break;
+        case CAUSE_ILLEGAL_INSTRUCTION:
+            cprintf("Illegal instruction caught at 0x%x\n", tf->epc);
+            cprintf("Exception type: Illegal instruction\n");
+            tf->epc += 4;
             break;
         case CAUSE_MISALIGNED_LOAD: break;
         case CAUSE_FAULT_LOAD: break;
@@ -146,17 +150,20 @@ void exception_handler(struct trapframe* tf)
 }
 
 /* trap_dispatch - dispatch based on what type of trap occurred */
+/* trap_dispatch - dispatch based on what type of trap occurred */
 static inline void trap_dispatch(struct trapframe* tf)
 {
     if ((intptr_t)tf->cause < 0)
     {  // 如果scause的最高位是1，说明trap是由中断引起的
         // interrupts
         // cprintf("Interrupt\n");
+        // cprintf("Interrupt\n");
         interrupt_handler(tf);
     }
     else
     {
         // exceptions
+        // cprintf("Exception\n");
         // cprintf("Exception\n");
         exception_handler(tf);
     }
