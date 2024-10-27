@@ -362,6 +362,29 @@ static void buddy_system_check(void) {
 
 ## 扩展练习Challenge：任意大小的内存单元slub分配算法（需要编程）
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ## 扩展练习Challenge：硬件的可用物理内存范围的获取方法
 
 ###  1. 通过BIOS或固件获取内存范围：
