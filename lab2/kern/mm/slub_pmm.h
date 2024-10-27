@@ -3,6 +3,25 @@
 
 #include <pmm.h>
 
+#define NUM_CACHES 11
+#define SLUB_BASE_SHIFT 3
+
+struct slab
+{
+    struct kmem_cache* cache;
+    unsigned int       inuse;
+    unsigned int       total_objects;
+    list_entry_t       list;
+};
+
+struct kmem_cache
+{
+    size_t       object_size;
+    size_t       size;
+    void*        freelist;
+    list_entry_t partial_list;
+};
+
 extern const struct pmm_manager slub_pmm_manager;
 
 static void         slub_init(void);
