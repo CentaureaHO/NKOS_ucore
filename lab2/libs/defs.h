@@ -75,4 +75,7 @@ typedef size_t ppn_t;
  * */
 #define to_struct(ptr, type, member) ((type*)((char*)(ptr) - offsetof(type, member)))
 
+#define le2struct(le, type, member) \
+    ((type *)((char *)(le) - offsetof(type, member)))
+
 #endif /* !__LIBS_DEFS_H__ */
