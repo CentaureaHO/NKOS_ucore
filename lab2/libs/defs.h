@@ -51,6 +51,12 @@ typedef size_t ppn_t;
  * Rounding operations (efficient when n is a power of 2)
  * Round down to the nearest multiple of n
  * */
+/*
+    (size_t)(a): 强制转换为size_t
+    (size_t)(a) % (n): 取模
+    __a - __a % (n): 取整，减去余数后可以保证得到n的整数倍
+    (typeof(a))(__a - __a % (n)): 强制转换为a的类型
+*/
 #define ROUNDDOWN(a, n)               \
     ({                                \
         size_t __a = (size_t)(a);     \
@@ -58,6 +64,11 @@ typedef size_t ppn_t;
     })
 
 /* Round up to the nearest multiple of n */
+/*
+    a + __n - 1: 加上n-1，超过上一层的n的整数倍
+    ROUNDDOWN(a + __n - 1, __n): 向下取整，得到n的往上取整的整数倍
+    如果a本来就是n的整数倍，向下取整后还是a
+*/
 #define ROUNDUP(a, n)                                       \
     ({                                                      \
         size_t __n = (size_t)(n);                           \
@@ -65,6 +76,12 @@ typedef size_t ppn_t;
     })
 
 /* Return the offset of 'member' relative to the beginning of a struct type */
+/*
+    (type*)0: 指向地址0的type指针
+    (type*)0->member: 首地址为0的type中member
+    &((type*)0)->member: 取地址
+    (size_t)(&((type*)0)->member): 强制转换为size_t
+*/
 #define offsetof(type, member) ((size_t)(&((type*)0)->member))
 
 /* *
@@ -73,9 +90,9 @@ typedef size_t ppn_t;
  * @type:   the type of the struct this is embedded in
  * @member: the name of the member within the struct
  * */
+/*
+    根据member地址取结构体首地址
+*/
 #define to_struct(ptr, type, member) ((type*)((char*)(ptr) - offsetof(type, member)))
-
-#define le2struct(le, type, member) \
-    ((type *)((char *)(le) - offsetof(type, member)))
 
 #endif /* !__LIBS_DEFS_H__ */
