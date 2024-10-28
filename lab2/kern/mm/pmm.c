@@ -1,7 +1,7 @@
 #include <default_pmm.h>
 #include <best_fit_pmm.h>
 #include <buddy_pmm.h>
-#include <slub_pmm.h>
+#include <slub.h>
 #include <defs.h>
 #include <error.h>
 #include <memlayout.h>
