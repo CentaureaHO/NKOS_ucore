@@ -362,28 +362,145 @@ static void buddy_system_check(void) {
 
 ## 扩展练习Challenge：任意大小的内存单元slub分配算法（需要编程）
 
+通过实验指导书和给出的链接可以知道，在Linux内核当中，SLUB（Slab Allocator）的分配算法可以高效管理内存的算法。但它的实际实现非常复杂，需要考虑缓存对齐、NUMA 等多种系统性能优化问题，目前我们的 uCore 作为一个实验性质的操作系统，仅仅实现了一种结合 SLAB 和 SLUB 特性的分配器，带有slub思想的算法。
 
+---
 
+#### 1、简化版 SLUB 算法概述
 
+1. **数据结构简化：**  
+   将 Linux 内核中的 `kmem_cache`、`kmem_cache_cpu` 和 `kmem_cache_node` 三个结构体合并为一个 `kmem_cache_t` 结构体。该结构体用于管理存储对象的内存块，维护三个链表：  
+   - **slabs_full**：已分配满的 slab  
+   - **slabs_partial**：部分被分配的 slab  
+   - **slabs_free**：未分配的 slab  
 
+2. **内存管理方式：**  
+   - **固定 Slab 大小：** 每个 Slab 大小为一页（通常为 4096 字节）。
+   - **对象大小限制：** 对象大小限定为 16、32、64、128、256、512、1024 和 2048 字节，不允许创建大于一页的对象。
 
+3. **静态链表管理空闲块：**  
+   复用 Page 数据结构，将 Slab 元数据保存在 Page 结构体中，并通过静态链表管理空闲块。
 
+4. **内存释放方式：**  
+   SLUB 算法中的自动回收机制被移除，改由程序员手动管理 Slab 的释放。
 
+---
 
+#### 2、核心代码分析
 
+##### 1. 数据结构定义
 
+```c
+struct kmem_cache_t {
+    list_entry_t slabs_full;
+    list_entry_t slabs_partial;
+    list_entry_t slabs_free;
+    uint16_t objsize;
+    uint16_t num; // 每个 Slab 保存的对象数量
+    void (*ctor)(void *, struct kmem_cache_t *, size_t); // 构造函数
+    void (*dtor)(void *, struct kmem_cache_t *, size_t); // 析构函数
+    char name[CACHE_NAMELEN]; // 仓库名称
+    list_entry_t cache_link;
+};
 
+struct slab_t {
+    int ref; // 页的引用次数
+    struct kmem_cache_t *cachep; // 指向仓库对象的指针
+    uint16_t inuse; // 已分配的对象数量
+    int16_t free; // 下一个空闲对象的偏移量
+    list_entry_t slab_link;
+};
+```
 
+##### 2. 分配器初始化：`kmem_init()`
 
+```c
+void kmem_init() {
+    cache_cache.objsize = sizeof(struct kmem_cache_t);
+    cache_cache.num = PGSIZE / (sizeof(int16_t) + sizeof(struct kmem_cache_t));
+    list_init(&(cache_cache.slabs_full));
+    list_init(&(cache_cache.slabs_partial));
+    list_init(&(cache_cache.slabs_free));
+    list_add(&(cache_chain), &(cache_cache.cache_link));
 
+    for (int i = 0, size = 16; i < SIZED_CACHE_NUM; i++, size *= 2) {
+        sized_caches[i] = kmem_cache_create(sized_cache_name, size, NULL, NULL);
+    }
+    check_kmem(); // 测试分配器
+}
+```
 
+##### 3. 创建仓库：`kmem_cache_create()`
 
+```c
+struct kmem_cache_t *kmem_cache_create(const char *name, size_t size,
+    void (*ctor)(void *, struct kmem_cache_t *, size_t),
+    void (*dtor)(void *, struct kmem_cache_t *, size_t)) {
 
+    struct kmem_cache_t *cachep = kmem_cache_alloc(&cache_cache);
+    cachep->objsize = size;
+    cachep->num = PGSIZE / (sizeof(int16_t) + size);
+    memcpy(cachep->name, name, CACHE_NAMELEN);
+    list_init(&(cachep->slabs_full));
+    list_init(&(cachep->slabs_partial));
+    list_init(&(cachep->slabs_free));
+    list_add(&(cache_chain), &(cachep->cache_link));
+    return cachep;
+}
+```
 
+##### 4. 分配对象：`kmem_cache_alloc()`
 
+```c
+void *kmem_cache_alloc(struct kmem_cache_t *cachep) {
+    list_entry_t *le = !list_empty(&(cachep->slabs_partial)) 
+                        ? list_next(&(cachep->slabs_partial)) 
+                        : list_next(&(cachep->slabs_free));
 
+    struct slab_t *slab = le2slab(le, page_link);
+    void *kva = slab2kva(slab);
+    int16_t *bufctl = kva;
+    void *objp = bufctl + slab->free * cachep->objsize;
 
+    slab->inuse++;
+    slab->free = bufctl[slab->free];
 
+    if (slab->inuse == cachep->num)
+        list_add(&(cachep->slabs_full), le);
+    else
+        list_add(&(cachep->slabs_partial), le);
+    
+    return objp;
+}
+```
+
+---
+
+#### 3、测试样例
+
+测试样例通过初始化仓库、分配对象、释放对象和验证链表状态来确保分配器的功能正确。
+
+```c
+static void check_kmem() {
+    struct kmem_cache_t *cp0 = kmem_cache_create("test_cache", 2046, NULL, NULL);
+    struct test_object *p0, *p1, *p2, *p3, *p4, *p5;
+
+    p0 = kmem_cache_alloc(cp0);
+    p1 = kmem_cache_alloc(cp0);
+    p2 = kmem_cache_alloc(cp0);
+    kmem_cache_free(cp0, p2);
+
+    assert(list_length(&(cp0->slabs_partial)) == 1);
+    assert(list_length(&(cp0->slabs_full)) == 2);
+
+    kmem_cache_destroy(cp0);
+    cprintf("check_kmem() succeeded!\n");
+}
+```
+
+<img src="C:\Users\31376\OneDrive\推送\图片\Screenshots\屏幕截图 2024-10-27 215746.png" style="zoom:80%;" />
+
+借鉴了一些测试样例和代码，从结果来看，check_kmem(),成功了.
 
 ## 扩展练习Challenge：硬件的可用物理内存范围的获取方法
 
