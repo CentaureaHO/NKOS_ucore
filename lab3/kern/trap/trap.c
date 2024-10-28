@@ -162,8 +162,16 @@ void exception_handler(struct trapframe* tf)
     {
         case CAUSE_MISALIGNED_FETCH: cprintf("Instruction address misaligned\n"); break;
         case CAUSE_FETCH_ACCESS: cprintf("Instruction access fault\n"); break;
-        case CAUSE_ILLEGAL_INSTRUCTION: cprintf("Illegal instruction\n"); break;
-        case CAUSE_BREAKPOINT: cprintf("Breakpoint\n"); break;
+        case CAUSE_ILLEGAL_INSTRUCTION:
+            cprintf("Illegal instruction caught at 0x%x\n", tf->epc);
+            cprintf("Exception type: Illegal instruction\n");
+            tf->epc += 4;
+            break;
+        case CAUSE_BREAKPOINT:
+            cprintf("ebreak caught at 0x%x\n", tf->epc);
+            cprintf("Exception type: breakpoint\n");
+            tf->epc += 2;  // ebreak属于压缩指令集C，仅占用2字节
+            break;
         case CAUSE_MISALIGNED_LOAD: cprintf("Load address misaligned\n"); break;
         case CAUSE_LOAD_ACCESS:
             cprintf("Load access fault\n");
