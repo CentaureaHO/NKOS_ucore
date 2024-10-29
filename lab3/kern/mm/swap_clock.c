@@ -37,6 +37,7 @@ static int _clock_init_mm(struct mm_struct* mm)
     // 初始化当前指针curr_ptr指向pra_list_head，表示当前页面替换位置为链表头
     // 将mm的私有成员指针指向pra_list_head，用于后续的页面替换算法操作
     // cprintf(" mm->sm_priv %x in fifo_init_mm\n",mm->sm_priv);
+    
     return 0;
 }
 /*
