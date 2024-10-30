@@ -60,7 +60,6 @@ static int _clock_map_swappable(struct mm_struct* mm, uintptr_t addr, struct Pag
     list_add_before((list_entry_t*) mm->sm_priv,entry);
     page->visited = 1;
     return 0;
-    return 0;
 }
 /*
  *  (4)_fifo_swap_out_victim: According FIFO PRA, we should unlink the  earliest arrival page in front of pra_list_head
@@ -96,7 +95,6 @@ static int _clock_swap_out_victim(struct mm_struct* mm, struct Page** ptr_page, 
             *ptr_page = page;
             list_del(curr_ptr);
             cprintf("curr_ptr %p\n",curr_ptr);
-            //curr_ptr = head;
             break;
         } else {
             page->visited = 0;
