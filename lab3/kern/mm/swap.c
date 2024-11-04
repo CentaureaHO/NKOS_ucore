@@ -2,6 +2,7 @@
 #include <swapfs.h>
 #include <swap_fifo.h>
 #include <swap_clock.h>
+#include <swap_lru.h>
 #include <stdio.h>
 #include <string.h>
 #include <memlayout.h>
@@ -38,7 +39,7 @@ int swap_init(void)
         panic("bad max_swap_offset %08x.\n", max_swap_offset);
     }
 
-    sm    = &swap_manager_clock;  // use first in first out Page Replacement Algorithm
+    sm    = &swap_manager_lru;
     int r = sm->init();
 
     if (r == 0)
