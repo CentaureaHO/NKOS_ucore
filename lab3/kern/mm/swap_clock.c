@@ -95,7 +95,6 @@ static int _clock_swap_out_victim(struct mm_struct* mm, struct Page** ptr_page, 
         struct Page* ptr = le2page(curr_ptr, pra_page_link);
 
         if (ptr->visited) { ptr->visited = 0; }
-        // 否则的话，就是
         else
         {
             cprintf("curr_ptr %p\n", curr_ptr);

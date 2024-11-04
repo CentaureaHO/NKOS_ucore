@@ -6,6 +6,17 @@
 #include <swap_fifo.h>
 #include <list.h>
 
+/* Function Declartions */
+static int _fifo_init_mm(struct mm_struct* mm);  // 在mm_struct内部初始化私有数据
+static int _fifo_map_swappable(
+    struct mm_struct* mm, uintptr_t addr, struct Page* page, int swap_in);  // 将可置换页面映射到mm_struct中
+static int _fifo_swap_out_victim(struct mm_struct* mm, struct Page** ptr_page, int in_tick);  // 选择要换出的页面
+static int _fifo_check_swap(void);
+
+static int _fifo_init(void);                                             // 全局初始化，未实现
+static int _fifo_set_unswappable(struct mm_struct* mm, uintptr_t addr);  // 将页面设置为不可换出，未实现
+static int _fifo_tick_event(struct mm_struct* mm);  // 在系统时钟中断发生时调用，FIFO不需要，未实现
+
 /* [wikipedia]The simplest Page Replacement Algorithm(PRA) is a FIFO algorithm. The first-in, first-out
  * page replacement algorithm is a low-overhead algorithm that requires little book-keeping on
  * the part of the operating system. The idea is obvious from the name - the operating system
