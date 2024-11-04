@@ -160,7 +160,7 @@ extern free_area_t free_area;
 static void check_swap(void)
 {
     // backup mem env
-    int           ret, count = 0, total = 0, i;
+    size_t        ret, count = 0, total = 0, i;
     list_entry_t* le = &free_list;
     while ((le = list_next(le)) != &free_list)
     {

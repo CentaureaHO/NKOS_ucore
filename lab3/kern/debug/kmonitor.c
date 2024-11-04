@@ -61,7 +61,7 @@ static int runcmd(char* buf, struct trapframe* tf)
     char* argv[MAXARGS];
     int   argc = parse(buf, argv);
     if (argc == 0) { return 0; }
-    int i;
+    size_t i;
     for (i = 0; i < NCOMMANDS; i++)
     {
         if (strcmp(commands[i].name, argv[0]) == 0) { return commands[i].func(argc - 1, argv + 1, tf); }
@@ -92,7 +92,10 @@ void kmonitor(struct trapframe* tf)
 /* mon_help - print the information about mon_* functions */
 int mon_help(int argc, char** argv, struct trapframe* tf)
 {
-    int i;
+    (void)argc;
+    (void)argv;
+    (void)tf;
+    size_t i;
     for (i = 0; i < NCOMMANDS; i++) { cprintf("%s - %s\n", commands[i].name, commands[i].desc); }
     return 0;
 }
@@ -103,6 +106,9 @@ int mon_help(int argc, char** argv, struct trapframe* tf)
  * */
 int mon_kerninfo(int argc, char** argv, struct trapframe* tf)
 {
+    (void)argc;
+    (void)argv;
+    (void)tf;
     print_kerninfo();
     return 0;
 }
@@ -113,6 +119,9 @@ int mon_kerninfo(int argc, char** argv, struct trapframe* tf)
  * */
 int mon_backtrace(int argc, char** argv, struct trapframe* tf)
 {
+    (void)argc;
+    (void)argv;
+    (void)tf;
     print_stackframe();
     return 0;
 }

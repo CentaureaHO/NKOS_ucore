@@ -12,7 +12,7 @@
 #include <string.h>
 #include <../sync/sync.h>
 #include <riscv.h>
-#include <slub.h> 
+#include <slub.h>
 
 #ifndef PHYSICAL_MEMORY_OFFSET
 #define PHYSICAL_MEMORY_OFFSET 0xFFFFFFFF40000000

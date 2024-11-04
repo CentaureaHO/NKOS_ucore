@@ -254,8 +254,8 @@ static void basic_check(void)
 // NOTICE: You SHOULD NOT CHANGE basic_check, default_check functions!
 static void best_fit_check(void)
 {
-    int           score = 0, sumscore = 6;
-    int           count = 0, total = 0;
+    // int           score = 0, sumscore = 6;
+    size_t        count = 0, total = 0;
     list_entry_t* le = &free_list;
     while ((le = list_next(le)) != &free_list)
     {
@@ -271,7 +271,7 @@ static void best_fit_check(void)
     score += 1;
     cprintf("grading: %d / %d points\n", score, sumscore);
 #endif
-    struct Page *p0 = alloc_pages(5), *p1, *p2;
+    struct Page *p0 = alloc_pages(5), *p1 = NULL, *p2 = NULL;
     assert(p0 != NULL);
     assert(!PageProperty(p0));
 
@@ -306,6 +306,7 @@ static void best_fit_check(void)
     cprintf("grading: %d / %d points\n", score, sumscore);
 #endif
     p2 = p0 + 1;
+    (void)p2;
     free_pages(p0, 5);
     assert((p0 = alloc_pages(5)) != NULL);
     assert(alloc_page() == NULL);

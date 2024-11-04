@@ -53,7 +53,7 @@ static void buddy_system_init_memmap(struct Page* base, size_t n)
     while (n > 0)
     {
         uint32_t order = 0;
-        while ((1 << order) <= n && order < MAX_ORDER) { order += 1; }
+        while ((size_t)((1 << order)) <= n && order < MAX_ORDER) { order += 1; }
         if (order > 0) { order -= 1; }
 
         p           = base + offset;
@@ -108,7 +108,7 @@ static struct Page* buddy_system_alloc_pages(size_t n)
 
     // 正确计算需要的最小阶层
     uint32_t order = 0;
-    while ((1 << order) < n && order < MAX_ORDER) { order += 1; }
+    while ((size_t)((1 << order)) < n && order < MAX_ORDER) { order += 1; }
 
     if (order >= MAX_ORDER) { return NULL; }
 

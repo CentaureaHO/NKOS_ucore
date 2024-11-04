@@ -101,6 +101,7 @@ size_t nr_free_pages(void)
 static void page_init(void)
 {
     extern char kern_entry[];
+    (void)kern_entry;
 
     va_pa_offset       = KERNBASE - 0x80200000;
     uint64_t mem_begin = KERNEL_BEGIN_PADDR;
@@ -128,6 +129,7 @@ static void page_init(void)
     if (freemem < mem_end) { init_memmap(pa2page(mem_begin), (mem_end - mem_begin) / PGSIZE); }
 }
 
+static void enable_paging(void) __attribute__((unused));
 static void enable_paging(void) { write_csr(satp, (0x8000000000000000) | (boot_cr3 >> RISCV_PGSHIFT)); }
 
 /**
@@ -139,6 +141,8 @@ static void enable_paging(void) { write_csr(satp, (0x8000000000000000) | (boot_c
  * @param[in]  pa     Physical address of this memory
  * @param[in]  perm   The permission of this memory
  */
+static void boot_map_segment(pde_t* pgdir, uintptr_t la, size_t size, uintptr_t pa, uint32_t perm)
+    __attribute__((unused));
 static void boot_map_segment(pde_t* pgdir, uintptr_t la, size_t size, uintptr_t pa, uint32_t perm)
 {
     assert(PGOFF(la) == PGOFF(pa));
@@ -157,6 +161,7 @@ static void boot_map_segment(pde_t* pgdir, uintptr_t la, size_t size, uintptr_t 
 // return value: the kernel virtual address of this allocated page
 // note: this function is used to get the memory for PDT(Page Directory
 // Table)&PT(Page Table)
+static void* boot_alloc_page(void) __attribute__((unused));
 static void* boot_alloc_page(void)
 {
     struct Page* p = alloc_page();
@@ -355,7 +360,12 @@ int page_insert(pde_t* pgdir, struct Page* page, uintptr_t la, uint32_t perm)
 
 // invalidate a TLB entry, but only if the page tables being
 // edited are the ones currently in use by the processor.
-void tlb_invalidate(pde_t* pgdir, uintptr_t la) { flush_tlb(); }
+void tlb_invalidate(pde_t* pgdir, uintptr_t la)
+{
+    (void)pgdir;
+    (void)la;
+    flush_tlb();
+}
 
 // pgdir_alloc_page - call alloc_page & page_insert functions to
 //                  - allocate a page size memory & setup an addr map
@@ -455,14 +465,14 @@ static void check_boot_pgdir(void)
 {
     size_t nr_free_store;
     pte_t* ptep;
-    int    i;
+    size_t i;
 
     nr_free_store = nr_free_pages();
 
     for (i = ROUNDDOWN(KERNBASE, PGSIZE); i < npage * PGSIZE; i += PGSIZE)
     {
         assert((ptep = get_pte(boot_pgdir, (uintptr_t)KADDR(i), 0)) != NULL);
-        assert(PTE_ADDR(*ptep) == i);
+        assert(PTE_ADDR(*ptep) == (uintptr_t)(i));
     }
 
     assert(boot_pgdir[0] == 0);

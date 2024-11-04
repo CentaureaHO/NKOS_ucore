@@ -230,7 +230,7 @@ static void basic_check(void)
 // NOTICE: You SHOULD NOT CHANGE basic_check, default_check functions!
 static void default_check(void)
 {
-    int           count = 0, total = 0;
+    size_t        count = 0, total = 0;
     list_entry_t* le = &free_list;
     while ((le = list_next(le)) != &free_list)
     {

@@ -43,6 +43,9 @@ static int _fifo_init_mm(struct mm_struct* mm)
  */
 static int _fifo_map_swappable(struct mm_struct* mm, uintptr_t addr, struct Page* page, int swap_in)
 {
+    (void)(addr);
+    (void)(swap_in);
+
     list_entry_t* head  = (list_entry_t*)mm->sm_priv;
     list_entry_t* entry = &(page->pra_page_link);
 
@@ -119,9 +122,20 @@ static int _fifo_check_swap(void)
 
 static int _fifo_init(void) { return 0; }
 
-static int _fifo_set_unswappable(struct mm_struct* mm, uintptr_t addr) { return 0; }
+static int _fifo_set_unswappable(struct mm_struct* mm, uintptr_t addr)
+{
+    (void)(mm);
+    (void)(addr);
+    return 0;
+}
 
-static int _fifo_tick_event(struct mm_struct* mm) { return 0; }
+static int _fifo_tick_event(struct mm_struct* mm)
+{
+    (void)(mm);  // FIFO不依赖于时间来选择替换页面
+                 // 但为了保持接口一致性，保留了此函数
+                 // 为了抑制编译器的警告，象征性操作mm
+    return 0;
+}
 
 struct swap_manager swap_manager_fifo = {
     .name            = "fifo swap manager",
