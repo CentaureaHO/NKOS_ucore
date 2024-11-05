@@ -13,6 +13,7 @@
 #include <sync.h>
 #include <vmm.h>
 #include <riscv.h>
+#include <slub.h>
 
 // virtual address of physical page array
 struct Page* pages;
@@ -192,6 +193,9 @@ void pmm_init(void)
     // pmm
     check_alloc_page();
     // create boot_pgdir, an initial page directory(Page Directory Table, PDT)
+
+    // slub_allocator_init();
+
     extern char boot_page_table_sv39[];
     boot_pgdir = (pte_t*)boot_page_table_sv39;
     boot_cr3   = PADDR(boot_pgdir);

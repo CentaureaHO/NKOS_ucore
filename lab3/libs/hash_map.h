@@ -3,6 +3,7 @@
 
 #include <defs.h>
 #include <list.h>
+#include <slub.h>
 
 #define BUCKET_COUNT 8
 #define MAX_ENTRIES 32

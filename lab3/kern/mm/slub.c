@@ -60,7 +60,7 @@ static void* _cache_expand(slub_cache_t* cache_ptr)
     for (size_t i = 1; i < cache_ptr->objects_per_slab; ++i) idx_buffer[i - 1] = i;
     idx_buffer[cache_ptr->objects_per_slab - 1] = -1;
 
-    void* buf = idx_buffer + cache_ptr->objects_per_slab;
+    // void* buf = idx_buffer + cache_ptr->objects_per_slab;
 
     list_add(&(cache_ptr->slabs_free), &(slab->slab_link));
     return slab;
@@ -68,8 +68,9 @@ static void* _cache_expand(slub_cache_t* cache_ptr)
 
 static void _slab_destroy(slub_cache_t* cache_ptr, slab_t* slab)
 {
+    (void)cache_ptr;
     struct Page* page       = (struct Page*)slab;
-    int16_t*     idx_buffer = page2kva(page);
+    // int16_t*     idx_buffer = page2kva(page);
 
     page->property = page->flags = 0;
     list_del(&(page->page_link));

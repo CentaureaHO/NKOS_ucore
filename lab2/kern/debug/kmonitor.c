@@ -4,6 +4,7 @@
 #include <trap.h>
 #include <kmonitor.h>
 #include <kdebug.h>
+#include <sbi.h>
 
 /* *
  * Simple command-line kernel monitor useful for controlling the
@@ -80,6 +81,7 @@ void kmonitor(struct trapframe* tf)
     if (tf != NULL) { print_trapframe(tf); }
 
     char* buf;
+    // sbi_shutdown();
     while (1)
     {
         if ((buf = readline("K> ")) != NULL)

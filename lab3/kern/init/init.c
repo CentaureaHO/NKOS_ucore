@@ -10,6 +10,7 @@
 #include <vmm.h>
 #include <ide.h>
 #include <swap.h>
+#include <slub.h>
 #include <kmonitor.h>
 
 int  kern_init(void) __attribute__((noreturn));
@@ -28,7 +29,7 @@ int kern_init(void)
     // grade_backtrace();
 
     pmm_init();  // init physical memory management
-
+    // slub_allocator_init();
     idt_init();  // init interrupt descriptor table
 
     vmm_init();  // init virtual memory management

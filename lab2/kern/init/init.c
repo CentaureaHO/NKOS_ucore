@@ -27,7 +27,21 @@ int kern_init(void)
     idt_init();  // init interrupt descriptor table
 
     pmm_init();  // init physical memory management
-    kmem_int();  // challenge2使用
+                 // challenge2使用
+
+    list_entry_t* node = slub_malloc(sizeof(list_entry_t));
+    assert(node != NULL);
+    slub_free(node);
+
+    int* test_int = slub_malloc(sizeof(int));
+    *test_int     = 114514;
+    slub_free(test_int);
+    int* test_int2 = slub_malloc(sizeof(int));
+    *test_int2     = 1919810;
+    cprintf("Malloc a int of %d\n", *test_int);
+    slub_free(test_int2);
+    if (slub_free(test_int2) == 0) cprintf("Release int2\n");
+    else cprintf("Fail to release int2\n");
 
     idt_init();  // init interrupt descriptor table
 
