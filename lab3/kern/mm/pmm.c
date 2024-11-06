@@ -194,7 +194,7 @@ void pmm_init(void)
     check_alloc_page();
     // create boot_pgdir, an initial page directory(Page Directory Table, PDT)
 
-    // slub_allocator_init();
+    // 
 
     extern char boot_page_table_sv39[];
     boot_pgdir = (pte_t*)boot_page_table_sv39;
@@ -218,6 +218,8 @@ void pmm_init(void)
     // now the basic virtual memory map(see memalyout.h) is established.
     // check the correctness of the basic virtual memory map.
     check_boot_pgdir();
+
+    slub_allocator_init();
 }
 
 // get_pte - get pte and return the kernel virtual address of this pte for la

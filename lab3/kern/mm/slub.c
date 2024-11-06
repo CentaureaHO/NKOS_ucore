@@ -8,16 +8,19 @@
 static const size_t cache_size_min = 16;
 static const size_t cache_size_max = cache_size_min << (CACHE_NUM - 1);
 
-#define DESTROY_SLABS(cache_ptr, list)                                                   \
-    do {                                                                                 \
-        list_entry_t* le = list_next(list);                                              \
-        while (le != list)                                                               \
-        {                                                                                \
-            list_entry_t* temp = le;                                                     \
-            le                 = list_next(le);                                          \
-            _slab_destroy((cache_ptr), (slab_t*)le2page((struct Page*)temp, page_link)); \
-        }                                                                                \
+#define DESTROY_SLABS(cache_ptr, list)                     \
+    do {                                                   \
+        list_entry_t* le = list_next(list);                \
+        while (le != list)                                 \
+        {                                                  \
+            list_entry_t* temp = le;                       \
+            le                 = list_next(le);            \
+            slab_t* slab       = le2slab(temp, slab_link); \
+            _slab_destroy((cache_ptr), slab);              \
+        }                                                  \
     } while (0)
+
+#define le2slab(le, member) to_struct((le), slab_t, member)
 
 typedef struct slub_cache
 {
@@ -38,6 +41,7 @@ typedef struct slab
     uint16_t      in_use;
     int16_t       free_index;
     list_entry_t  slab_link;
+    struct Page*  page;
 } slab_t;
 
 static list_entry_t  _cache_registry;
@@ -50,17 +54,26 @@ static void  _cache_free(slub_cache_t* cache_ptr, void* obj_ptr);
 static void* _cache_expand(slub_cache_t* cache_ptr)
 {
     struct Page* page = alloc_page();
-    void*        kva  = page2kva(page);
-    slab_t*      slab = (slab_t*)page;
+    if (!page) return NULL;
+    void* kva = page2kva(page);
 
-    slab->cache_ptr = cache_ptr;
-    slab->in_use = slab->free_index = 0;
+    slab_t* slab = (slab_t*)kva;
 
-    int16_t* idx_buffer = kva;
-    for (size_t i = 1; i < cache_ptr->objects_per_slab; ++i) idx_buffer[i - 1] = i;
-    idx_buffer[cache_ptr->objects_per_slab - 1] = -1;
+    slab->cache_ptr  = cache_ptr;
+    slab->in_use     = 0;
+    slab->free_index = 0;
+    slab->page       = page;
 
-    // void* buf = idx_buffer + cache_ptr->objects_per_slab;
+    size_t available_space   = PGSIZE - sizeof(slab_t);
+    size_t obj_size_with_idx = sizeof(int16_t) + cache_ptr->object_size;
+    size_t objects_per_slab  = available_space / obj_size_with_idx;
+
+    slab->cache_ptr->objects_per_slab = objects_per_slab;
+
+    int16_t* idx_buffer = (int16_t*)((char*)kva + sizeof(slab_t));
+
+    for (size_t i = 1; i < objects_per_slab; ++i) idx_buffer[i - 1] = i;
+    idx_buffer[objects_per_slab - 1] = -1;
 
     list_add(&(cache_ptr->slabs_free), &(slab->slab_link));
     return slab;
@@ -69,11 +82,8 @@ static void* _cache_expand(slub_cache_t* cache_ptr)
 static void _slab_destroy(slub_cache_t* cache_ptr, slab_t* slab)
 {
     (void)cache_ptr;
-    struct Page* page       = (struct Page*)slab;
-    // int16_t*     idx_buffer = page2kva(page);
-
-    page->property = page->flags = 0;
-    list_del(&(page->page_link));
+    struct Page* page = slab->page;
+    list_del(&(slab->slab_link));
     free_page(page);
 }
 
@@ -89,13 +99,10 @@ static size_t _sized_index(size_t size)
 
 static slub_cache_t* _cache_create(size_t size)
 {
-    assert(size <= (PGSIZE - 2));
-
-    slub_cache_t* cache_ptr = _cache_alloc(&_cache_pool);
+    slub_cache_t* cache_ptr = (slub_cache_t*)_cache_alloc(&_cache_pool);
     if (!cache_ptr) return NULL;
 
-    cache_ptr->object_size      = size;
-    cache_ptr->objects_per_slab = PGSIZE / (sizeof(int16_t) + size);
+    cache_ptr->object_size = size;
 
     list_init(&(cache_ptr->slabs_full));
     list_init(&(cache_ptr->slabs_partial));
@@ -125,17 +132,19 @@ static void* _cache_alloc(slub_cache_t* cache_ptr)
         le = list_next(&(cache_ptr->slabs_free));
     }
 
-    list_del(le);
+    slab_t* slab = le2slab(le, slab_link);
 
-    slab_t*  slab       = (slab_t*)le2page((struct Page*)le, page_link);
-    void*    kva        = page2kva((struct Page*)slab);
-    int16_t* idx_buffer = kva;
+    void* kva = (void*)slab;
 
-    void* buf     = idx_buffer + cache_ptr->objects_per_slab;
-    void* obj_ptr = buf + slab->free_index * cache_ptr->object_size;
+    int16_t* idx_buffer = (int16_t*)((char*)kva + sizeof(slab_t));
+    void*    buf        = (void*)(idx_buffer + cache_ptr->objects_per_slab);
+    void*    obj_ptr    = buf + slab->free_index * cache_ptr->object_size;
 
     ++slab->in_use;
-    slab->free_index = idx_buffer[slab->free_index];
+    int16_t next_free_index = idx_buffer[slab->free_index];
+    slab->free_index        = next_free_index;
+
+    list_del(le);
 
     if (slab->in_use == cache_ptr->objects_per_slab)
         list_add(&(cache_ptr->slabs_full), le);
@@ -147,18 +156,18 @@ static void* _cache_alloc(slub_cache_t* cache_ptr)
 
 static void _cache_free(slub_cache_t* cache_ptr, void* obj_ptr)
 {
-    void*   base = page2kva(pages);
     void*   kva  = ROUNDDOWN(obj_ptr, PGSIZE);
-    slab_t* slab = (slab_t*)&pages[(kva - base) / PGSIZE];
+    slab_t* slab = (slab_t*)kva;
 
-    int16_t* idx_buffer = kva;
-    void*    buf        = idx_buffer + cache_ptr->objects_per_slab;
+    int16_t* idx_buffer = (int16_t*)((char*)kva + sizeof(slab_t));
+    void*    buf        = (void*)(idx_buffer + cache_ptr->objects_per_slab);
     int      offset     = (obj_ptr - buf) / cache_ptr->object_size;
 
-    list_del(&(slab->slab_link));
     idx_buffer[offset] = slab->free_index;
-    slab->in_use--;
-    slab->free_index = offset;
+    slab->free_index   = offset;
+    --slab->in_use;
+
+    list_del(&(slab->slab_link));
 
     if (slab->in_use == 0)
         list_add(&(cache_ptr->slabs_free), &(slab->slab_link));
@@ -174,7 +183,8 @@ static int _cache_shrink(slub_cache_t* cache_ptr)
     {
         list_entry_t* temp = le;
         le                 = list_next(le);
-        _slab_destroy(cache_ptr, (slab_t*)le2page((struct Page*)temp, page_link));
+        slab_t* slab       = le2slab(temp, slab_link);
+        _slab_destroy(cache_ptr, slab);
         ++count;
     }
     return count;
@@ -182,8 +192,7 @@ static int _cache_shrink(slub_cache_t* cache_ptr)
 
 void slub_allocator_init()
 {
-    _cache_pool.object_size      = sizeof(slub_cache_t);
-    _cache_pool.objects_per_slab = PGSIZE / (sizeof(int16_t) + sizeof(slub_cache_t));
+    _cache_pool.object_size = sizeof(slub_cache_t);
 
     list_init(&(_cache_pool.slabs_full));
     list_init(&(_cache_pool.slabs_partial));
@@ -192,7 +201,11 @@ void slub_allocator_init()
 
     list_add(&(_cache_registry), &(_cache_pool.cache_link));
 
+    cprintf("slub allocator initialized\n");
+
     for (size_t i = 0; i < CACHE_NUM; ++i) _caches[i] = _cache_create(cache_size_min << i);
+
+    cprintf("slub caches created\n");
 }
 
 void* slub_malloc(size_t size)
@@ -205,9 +218,8 @@ int slub_free(void* obj_ptr)
 {
     if (obj_ptr == NULL) return -1;
 
-    void*   base = page2kva((struct Page*)pages);
     void*   kva  = ROUNDDOWN(obj_ptr, PGSIZE);
-    slab_t* slab = (slab_t*)&pages[(kva - base) / PGSIZE];
+    slab_t* slab = (slab_t*)kva;
 
     if (slab == NULL || slab->in_use == 0) return -1;
 

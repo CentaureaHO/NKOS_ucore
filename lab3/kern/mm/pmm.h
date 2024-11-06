@@ -6,6 +6,7 @@
 #include <defs.h>
 #include <memlayout.h>
 #include <mmu.h>
+#include <stdio.h>
 
 // pmm_manager is a physical memory management class. A special pmm manager -
 // XXX_pmm_manager
@@ -83,7 +84,11 @@ extern size_t       npage;
 extern const size_t nbase;
 extern uint_t       va_pa_offset;
 
-static inline ppn_t page2ppn(struct Page* page) { return page - pages + nbase; }
+static inline ppn_t page2ppn(struct Page* page)
+{
+    cprintf("Debug in page2ppn: Page: %p, pages: %p, nbase: %d, page - pages: %d\n", page, pages, nbase, page - pages);
+    return page - pages + nbase;
+}
 
 static inline uintptr_t page2pa(struct Page* page) { return page2ppn(page) << PGSHIFT; }
 
