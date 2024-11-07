@@ -39,7 +39,7 @@ int kern_init(void)
     int* test_int2 = slub_malloc(sizeof(int));
     *test_int2     = 1919810;
     cprintf("Malloc a int of %d\n", *test_int);
-    slub_free(test_int2);
+    // slub_free(test_int2);
     if (slub_free(test_int2) == 0) cprintf("Release int2\n");
     else cprintf("Fail to release int2\n");
 
