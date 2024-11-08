@@ -108,6 +108,9 @@ static int _clock_swap_out_victim(struct mm_struct* mm, struct Page** ptr_page, 
     }
     return 0;
 }
+
+static void* _clock_access_addr(uintptr_t addr) { return (void*)addr; }
+
 static int _clock_check_swap(void)
 {
 #ifdef ucore_test
@@ -202,4 +205,5 @@ struct swap_manager swap_manager_clock = {
     .set_unswappable = &_clock_set_unswappable,
     .swap_out_victim = &_clock_swap_out_victim,
     .check_swap      = &_clock_check_swap,
+    .access_addr     = &_clock_access_addr,
 };

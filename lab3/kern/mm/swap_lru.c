@@ -84,55 +84,69 @@ static int _lru_swap_out_victim(struct mm_struct* mm, struct Page** ptr_page, in
     return 0;
 }
 
+static void* _lru_access_addr(uintptr_t addr)
+{
+    hashtable_entry_t* found_entry = hashtable_get(&page_hash_table, addr, hash_function);
+    if (found_entry == NULL) return (void*)addr;
+
+    struct Page* page = to_struct(found_entry, struct Page, hash_entry);
+
+    list_del(&page->pra_page_link);
+    list_add(&lru_list_head, &page->pra_page_link);
+
+    cprintf("Accessed page with vaddr 0x%x, moved to front of LRU list.\n", addr);
+    print_lru_list();
+    return (void*)addr;
+}
+
 static int _lru_check_swap(void)
 {
     cprintf("\n\nStart lru_check_swap\n");
 
     cprintf("write Virt Page c in lru_check_swap\n");
-    *(unsigned char*)0x3000 = 0x0c;
+    *(unsigned char*)_lru_access_addr(0x3000) = 0x0c;
     assert(pgfault_num == 4);
 
     cprintf("write Virt Page a in lru_check_swap\n");
-    *(unsigned char*)0x1000 = 0x0a;
+    *(unsigned char*)_lru_access_addr(0x1000) = 0x0a;
     assert(pgfault_num == 4);
 
     cprintf("write Virt Page d in lru_check_swap\n");
-    *(unsigned char*)0x4000 = 0x0d;
+    *(unsigned char*)_lru_access_addr(0x4000) = 0x0d;
     assert(pgfault_num == 4);
 
     cprintf("write Virt Page b in lru_check_swap\n");
-    *(unsigned char*)0x2000 = 0x0b;
+    *(unsigned char*)_lru_access_addr(0x2000) = 0x0b;
     assert(pgfault_num == 4);
 
     cprintf("write Virt Page e in lru_check_swap\n");
-    *(unsigned char*)0x5000 = 0x0e;
+    *(unsigned char*)_lru_access_addr(0x5000) = 0x0e;
     assert(pgfault_num == 5);
 
     cprintf("write Virt Page b in lru_check_swap\n");
-    *(unsigned char*)0x2000 = 0x0b;
+    *(unsigned char*)_lru_access_addr(0x2000) = 0x0b;
     assert(pgfault_num == 5);
 
     cprintf("write Virt Page a in lru_check_swap\n");
-    *(unsigned char*)0x1000 = 0x0a;
-    assert(pgfault_num == 6);
+    *(unsigned char*)_lru_access_addr(0x1000) = 0x0a;
+    assert(pgfault_num == 5);
 
     cprintf("write Virt Page c in lru_check_swap\n");
-    *(unsigned char*)0x3000 = 0x0c;
+    *(unsigned char*)_lru_access_addr(0x3000) = 0x0c;
     assert(pgfault_num == 6);
 
     cprintf("write Virt Page d in lru_check_swap\n");
-    *(unsigned char*)0x4000 = 0x0d;
-    cprintf("Pagefault counts: %d\n", pgfault_num);
-    assert(pgfault_num == 6);
+    *(unsigned char*)_lru_access_addr(0x4000) = 0x0d;
+    assert(pgfault_num == 7);
 
     cprintf("write Virt Page e in lru_check_swap\n");
-    *(unsigned char*)0x5000 = 0x0e;
-    assert(pgfault_num == 6);
+    *(unsigned char*)_lru_access_addr(0x5000) = 0x0e;
+    assert(pgfault_num == 8);
 
     cprintf("write Virt Page a in lru_check_swap\n");
     assert(*(unsigned char*)0x1000 == 0x0a);
-    *(unsigned char*)0x1000 = 0x0a;
-    assert(pgfault_num == 6);
+    *(unsigned char*)_lru_access_addr(0x1000) = 0x0a;
+    assert(pgfault_num == 8);
     return 0;
 }
 
@@ -160,4 +174,5 @@ struct swap_manager swap_manager_lru = {
     .set_unswappable = &_lru_set_unswappable,
     .swap_out_victim = &_lru_swap_out_victim,
     .check_swap      = &_lru_check_swap,
+    .access_addr     = &_lru_access_addr,
 };

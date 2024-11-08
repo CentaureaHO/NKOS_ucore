@@ -9,6 +9,8 @@
 #include <pmm.h>
 #include <mmu.h>
 
+#define acc(x) (sm->access_addr(x))
+
 // the valid vaddr for check is between 0~CHECK_VALID_VADDR-1
 #define CHECK_VALID_VIR_PAGE_NUM 5
 #define BEING_CHECK_VALID_VADDR 0X1000
@@ -125,21 +127,21 @@ int swap_in(struct mm_struct* mm, uintptr_t addr, struct Page** ptr_result)
 
 static inline void check_content_set(void)
 {
-    *(unsigned char*)0x1000 = 0x0a;
+    *(unsigned char*)acc(0x1000) = 0x0a;
     assert(pgfault_num == 1);
-    *(unsigned char*)0x1010 = 0x0a;
+    *(unsigned char*)acc(0x1010) = 0x0a;
     assert(pgfault_num == 1);
-    *(unsigned char*)0x2000 = 0x0b;
+    *(unsigned char*)acc(0x2000) = 0x0b;
     assert(pgfault_num == 2);
-    *(unsigned char*)0x2010 = 0x0b;
+    *(unsigned char*)acc(0x2010) = 0x0b;
     assert(pgfault_num == 2);
-    *(unsigned char*)0x3000 = 0x0c;
+    *(unsigned char*)acc(0x3000) = 0x0c;
     assert(pgfault_num == 3);
-    *(unsigned char*)0x3010 = 0x0c;
+    *(unsigned char*)acc(0x3010) = 0x0c;
     assert(pgfault_num == 3);
-    *(unsigned char*)0x4000 = 0x0d;
+    *(unsigned char*)acc(0x4000) = 0x0d;
     assert(pgfault_num == 4);
-    *(unsigned char*)0x4010 = 0x0d;
+    *(unsigned char*)acc(0x4010) = 0x0d;
     assert(pgfault_num == 4);
 }
 
