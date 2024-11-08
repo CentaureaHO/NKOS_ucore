@@ -1,0 +1,62 @@
+In file included from kern/mm/pmm.c:17:
+kern/mm/pmm.c: In function 'page_init':
+libs/hash_map.h:71:32: error: passing argument 1 of 'hashmap_base_iter_init' from incompatible pointer type [-Werror=incompatible-pointer-types]
+   71 |         hashmap_base_iter_init(&__iter, &(hm).base);  \
+      |                                ^~~~~~~
+      |                                |
+      |                                struct <anonymous> *
+kern/mm/pmm.c:154:30: note: in expansion of macro 'hashmap_iter'
+  154 |     HASHMAP_ITER(map) iter = hashmap_iter(map);  // Corrected: pass 'map' instead of '&map'
+      |                              ^~~~~~~~~~~~
+libs/hash_map.h:104:49: note: expected 'hashmap_iterator_t *' {aka 'struct hashmap_iterator *'} but argument is of type 'struct <anonymous> *'
+  104 | void hashmap_base_iter_init(hashmap_iterator_t* iter, hashmap_base_t* hb);
+      |                             ~~~~~~~~~~~~~~~~~~~~^~~~
+libs/hash_map.h:76:29: error: passing argument 1 of 'hashmap_base_iter_valid' from incompatible pointer type [-Werror=incompatible-pointer-types]
+   76 |     hashmap_base_iter_valid(&(iter))
+      |                             ^~~~~~~
+      |                             |
+      |                             struct <anonymous> *
+kern/mm/pmm.c:155:12: note: in expansion of macro 'hashmap_iter_valid'
+  155 |     while (hashmap_iter_valid(iter))
+      |            ^~~~~~~~~~~~~~~~~~
+libs/hash_map.h:105:50: note: expected 'hashmap_iterator_t *' {aka 'struct hashmap_iterator *'} but argument is of type 'struct <anonymous> *'
+  105 | int  hashmap_base_iter_valid(hashmap_iterator_t* iter);
+      |                              ~~~~~~~~~~~~~~~~~~~~^~~~
+libs/hash_map.h:82:68: error: passing argument 1 of 'hashmap_base_iter_get_key' from incompatible pointer type [-Werror=incompatible-pointer-types]
+   82 |     ((typeof(*(iter).iter_types->t_key)*)hashmap_base_iter_get_key(&(iter)))
+      |                                                                    ^~~~~~~
+      |                                                                    |
+      |                                                                    struct <anonymous> *
+kern/mm/pmm.c:157:17: note: in expansion of macro 'hashmap_iter_get_key'
+  157 |         key   = hashmap_iter_get_key(iter);
+      |                 ^~~~~~~~~~~~~~~~~~~~
+libs/hash_map.h:107:53: note: expected 'hashmap_iterator_t *' {aka 'struct hashmap_iterator *'} but argument is of type 'struct <anonymous> *'
+  107 | void* hashmap_base_iter_get_key(hashmap_iterator_t* iter);
+      |                                 ~~~~~~~~~~~~~~~~~~~~^~~~
+kern/mm/pmm.c:157:15: error: assignment discards 'const' qualifier from pointer target type [-Werror=discarded-qualifiers]
+  157 |         key   = hashmap_iter_get_key(iter);
+      |               ^
+libs/hash_map.h:85:70: error: passing argument 1 of 'hashmap_base_iter_get_data' from incompatible pointer type [-Werror=incompatible-pointer-types]
+   85 |     ((typeof(*(iter).iter_types->t_data)*)hashmap_base_iter_get_data(&(iter)))
+      |                                                                      ^~~~~~~
+      |                                                                      |
+      |                                                                      struct <anonymous> *
+kern/mm/pmm.c:158:17: note: in expansion of macro 'hashmap_iter_get_data'
+  158 |         value = hashmap_iter_get_data(iter);
+      |                 ^~~~~~~~~~~~~~~~~~~~~
+libs/hash_map.h:108:54: note: expected 'hashmap_iterator_t *' {aka 'struct hashmap_iterator *'} but argument is of type 'struct <anonymous> *'
+  108 | void* hashmap_base_iter_get_data(hashmap_iterator_t* iter);
+      |                                  ~~~~~~~~~~~~~~~~~~~~^~~~
+libs/hash_map.h:79:28: error: passing argument 1 of 'hashmap_base_iter_next' from incompatible pointer type [-Werror=incompatible-pointer-types]
+   79 |     hashmap_base_iter_next(&(iter))
+      |                            ^~~~~~~
+      |                            |
+      |                            struct <anonymous> *
+kern/mm/pmm.c:160:9: note: in expansion of macro 'hashmap_iter_next'
+  160 |         hashmap_iter_next(iter);
+      |         ^~~~~~~~~~~~~~~~~
+libs/hash_map.h:106:49: note: expected 'hashmap_iterator_t *' {aka 'struct hashmap_iterator *'} but argument is of type 'struct <anonymous> *'
+  106 | void hashmap_base_iter_next(hashmap_iterator_t* iter);
+      |                             ~~~~~~~~~~~~~~~~~~~~^~~~
+cc1: all warnings being treated as errors
+make: *** [Makefile:122：obj/kern/mm/pmm.o] 错误 1

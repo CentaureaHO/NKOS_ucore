@@ -133,43 +133,6 @@ static void page_init(void)
     mem_begin         = ROUNDUP(freemem, PGSIZE);
     mem_end           = ROUNDDOWN(mem_end, PGSIZE);
     if (freemem < mem_end) { init_memmap(pa2page(mem_begin), (mem_end - mem_begin) / PGSIZE); }
-
-    cprintf("Start testing hash map\n");
-    slub_allocator_init();
-
-    hashmap(int, int) map;
-    hashmap_init(map, 2, int_hash, int_cmp);
-
-    for (int i = 0; i < 10; ++i)
-    {
-        int* key   = smalloc(int);
-        int* value = smalloc(int);
-        *key       = i;
-        *value     = i * 100;
-        hashmap_put(map, key, value);
-    }
-
-    for (int i = 0; i < 10; ++i)
-    {
-        int  key   = i;
-        int* value = hashmap_get(map, &key);
-        if (value) { cprintf("Key: %d, Value: %d\n", key, *value); }
-        else { cprintf("Key: %d not found\n", key); }
-    }
-
-    // visit all buckets and prin
-
-    for (int i = 0; i < 10; ++i)
-    {
-        int key    = i;
-        int result = hashmap_remove(map, &key);
-        if (result == 0) { cprintf("Key: %d removed\n", key); }
-        else { cprintf("Key: %d not found for removal\n", key); }
-    }
-
-    hashmap_destroy(map);
-
-    sbi_shutdown();
 }
 
 static void enable_paging(void) __attribute__((unused));

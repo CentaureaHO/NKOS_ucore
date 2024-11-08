@@ -100,3 +100,77 @@ void hashmap_base_destroy(hashmap_base_t* hb)
     }
     sfree(hb->table);
 }
+
+void hashmap_base_iter_init(hashmap_iterator_t* iter, hashmap_base_t* hb)
+{
+    iter->iter_map     = hb;
+    iter->bucket_index = 0;
+    iter->list_pos     = NULL;
+
+    while (iter->bucket_index < hb->bucket_size)
+    {
+        list_entry_t* bucket = &hb->table[iter->bucket_index];
+        if (!list_empty(bucket))
+        {
+            iter->list_pos = list_next(bucket);
+            if (iter->list_pos != bucket) return;
+        }
+        iter->bucket_index++;
+    }
+
+    iter->list_pos = NULL;
+}
+
+int hashmap_base_iter_valid(hashmap_iterator_t* iter) { return iter->list_pos != NULL; }
+
+void hashmap_base_iter_next(hashmap_iterator_t* iter)
+{
+    if (iter->list_pos == NULL) return;
+
+    list_entry_t* bucket = &iter->iter_map->table[iter->bucket_index];
+    iter->list_pos       = list_next(iter->list_pos);
+
+    if (iter->list_pos == bucket)
+    {
+        iter->bucket_index++;
+        while (iter->bucket_index < iter->iter_map->bucket_size)
+        {
+            bucket = &iter->iter_map->table[iter->bucket_index];
+            if (!list_empty(bucket))
+            {
+                iter->list_pos = list_next(bucket);
+                if (iter->list_pos != bucket) return;
+            }
+            iter->bucket_index++;
+        }
+
+        iter->list_pos = NULL;
+    }
+}
+
+void* hashmap_base_iter_get_key(hashmap_iterator_t* iter)
+{
+    if (iter->list_pos == NULL) return NULL;
+    hashmap_entry_t* entry = to_struct(iter->list_pos, hashmap_entry_t, hash_link);
+    return entry->key;
+}
+
+void* hashmap_base_iter_get_data(hashmap_iterator_t* iter)
+{
+    if (iter->list_pos == NULL) return NULL;
+    hashmap_entry_t* entry = to_struct(iter->list_pos, hashmap_entry_t, hash_link);
+    return entry->data;
+}
+
+void hashmap_base_iter_remove(hashmap_iterator_t* iter)
+{
+    if (iter->list_pos == NULL) return;
+
+    list_entry_t* current = iter->list_pos;
+
+    hashmap_base_iter_next(iter);
+
+    hashmap_entry_t* entry = to_struct(current, hashmap_entry_t, hash_link);
+    list_del(current);
+    sfree(entry);
+}
