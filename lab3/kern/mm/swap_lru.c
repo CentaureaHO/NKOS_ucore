@@ -99,54 +99,112 @@ static void* _lru_access_addr(uintptr_t addr)
     return (void*)addr;
 }
 
+#define CHECK_LIST(_pos, _list, _arr, _idx, _addr0, _addr1, _addr2, _addr3)  \
+    {                                                                        \
+        _idx    = 0;                                                         \
+        _arr[0] = _addr0;                                                    \
+        _arr[1] = _addr1;                                                    \
+        _arr[2] = _addr2;                                                    \
+        _arr[3] = _addr3;                                                    \
+        list_for_each(_pos, _list)                                           \
+        {                                                                    \
+            struct Page* page = to_struct(_pos, struct Page, pra_page_link); \
+            assert(page->pra_vaddr == _arr[_idx]);                           \
+            _idx++;                                                          \
+        }                                                                    \
+    }
+
 static int _lru_check_swap(void)
 {
+    list_entry_t* pos = NULL;
+    size_t        idx = 0;
+    uintptr_t     addr_array[4];
+
     cprintf("\n\nStart lru_check_swap\n");
+    // initial lru list: 4000 3000 2000 1000
+    CHECK_LIST(pos, &lru_list_head, addr_array, idx, 0x4000, 0x3000, 0x2000, 0x1000);
 
     cprintf("write Virt Page c in lru_check_swap\n");
     *(unsigned char*)_lru_access_addr(0x3000) = 0x0c;
+    // 3000 exists, move to front
+    // lru list: 3000 4000 2000 1000
     assert(pgfault_num == 4);
+    CHECK_LIST(pos, &lru_list_head, addr_array, idx, 0x3000, 0x4000, 0x2000, 0x1000);
 
     cprintf("write Virt Page a in lru_check_swap\n");
     *(unsigned char*)_lru_access_addr(0x1000) = 0x0a;
+    // 1000 exists, move to front
+    // lru list: 1000 3000 4000 2000
     assert(pgfault_num == 4);
+    CHECK_LIST(pos, &lru_list_head, addr_array, idx, 0x1000, 0x3000, 0x4000, 0x2000);
 
     cprintf("write Virt Page d in lru_check_swap\n");
     *(unsigned char*)_lru_access_addr(0x4000) = 0x0d;
+    // 4000 exists, move to front
+    // lru list: 4000 1000 3000 2000
     assert(pgfault_num == 4);
+    CHECK_LIST(pos, &lru_list_head, addr_array, idx, 0x4000, 0x1000, 0x3000, 0x2000);
 
     cprintf("write Virt Page b in lru_check_swap\n");
     *(unsigned char*)_lru_access_addr(0x2000) = 0x0b;
+    // 2000 exists, move to front
+    // lru list: 2000 4000 1000 3000
     assert(pgfault_num == 4);
+    CHECK_LIST(pos, &lru_list_head, addr_array, idx, 0x2000, 0x4000, 0x1000, 0x3000);
 
     cprintf("write Virt Page e in lru_check_swap\n");
     *(unsigned char*)_lru_access_addr(0x5000) = 0x0e;
+    // 5000 does not exist, add to front
+    // remove tail: 3000; pagefault_num: 4 -> 5
+    // lru list: 5000 2000 4000 1000
     assert(pgfault_num == 5);
+    CHECK_LIST(pos, &lru_list_head, addr_array, idx, 0x5000, 0x2000, 0x4000, 0x1000);
 
     cprintf("write Virt Page b in lru_check_swap\n");
     *(unsigned char*)_lru_access_addr(0x2000) = 0x0b;
+    // 2000 exists, move to front
+    // lru list: 2000 5000 4000 1000
     assert(pgfault_num == 5);
+    CHECK_LIST(pos, &lru_list_head, addr_array, idx, 0x2000, 0x5000, 0x4000, 0x1000);
 
     cprintf("write Virt Page a in lru_check_swap\n");
     *(unsigned char*)_lru_access_addr(0x1000) = 0x0a;
+    // 1000 exists, move to front
+    // lru list: 1000 2000 5000 4000
     assert(pgfault_num == 5);
+    CHECK_LIST(pos, &lru_list_head, addr_array, idx, 0x1000, 0x2000, 0x5000, 0x4000);
 
     cprintf("write Virt Page c in lru_check_swap\n");
     *(unsigned char*)_lru_access_addr(0x3000) = 0x0c;
+    // 3000 does not exist, add to front
+    // remove tail: 4000; pagefault_num: 5 -> 6
+    // lru list: 3000 1000 2000 5000
     assert(pgfault_num == 6);
+    CHECK_LIST(pos, &lru_list_head, addr_array, idx, 0x3000, 0x1000, 0x2000, 0x5000);
 
     cprintf("write Virt Page d in lru_check_swap\n");
     *(unsigned char*)_lru_access_addr(0x4000) = 0x0d;
+    // 4000 does not exist, add to front
+    // remove tail: 5000; pagefault_num: 6 -> 7
+    // lru list: 4000 3000 1000 2000
     assert(pgfault_num == 7);
+    CHECK_LIST(pos, &lru_list_head, addr_array, idx, 0x4000, 0x3000, 0x1000, 0x2000);
 
     cprintf("write Virt Page e in lru_check_swap\n");
     *(unsigned char*)_lru_access_addr(0x5000) = 0x0e;
+    // 5000 does not exist, add to front
+    // remove tail: 2000; pagefault_num: 7 -> 8
+    // lru list: 5000 4000 3000 1000
     assert(pgfault_num == 8);
+    CHECK_LIST(pos, &lru_list_head, addr_array, idx, 0x5000, 0x4000, 0x3000, 0x1000);
 
     cprintf("write Virt Page a in lru_check_swap\n");
     assert(*(unsigned char*)0x1000 == 0x0a);
     *(unsigned char*)_lru_access_addr(0x1000) = 0x0a;
+    // 1000 exists, move to front
+    // lru list: 1000 5000 4000 3000
     assert(pgfault_num == 8);
+    CHECK_LIST(pos, &lru_list_head, addr_array, idx, 0x1000, 0x5000, 0x4000, 0x3000);
     return 0;
 }
 
