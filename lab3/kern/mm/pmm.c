@@ -100,6 +100,9 @@ size_t nr_free_pages(void)
     return ret;
 }
 
+size_t int_hash(const int* key) { return (size_t)*key; }
+int    int_cmp(const int* a, const int* b) { return *a - *b; }
+
 /* page_init - initialize the physical memory management */
 static void page_init(void)
 {
@@ -134,25 +137,37 @@ static void page_init(void)
     cprintf("Start testing hash map\n");
     slub_allocator_init();
 
-    // hashmap(int, int) map;
+    hashmap(int, int) map;
+    hashmap_init(map, 2, int_hash, int_cmp);
 
-    int* arr = smalloca(int, 15);
-    for (int i = 0; i < 10; i++) { arr[i] = i; }
-    for (int i = 0; i < 10; i++) { cprintf("arr[%d] = %d, addr = %x\n", i, arr[i], &arr[i]); }
-    int* arr2 = arr + 2;
-    cprintf("arr[2] = %d\n", *arr2);
-    cprintf("Should free size %d\n", sizeof(int) * 10);
-    sfree(arr);
+    for (int i = 0; i < 10; ++i)
+    {
+        int* key   = smalloc(int);
+        int* value = smalloc(int);
+        *key       = i;
+        *value     = i * 100;
+        hashmap_put(map, key, value);
+    }
 
-    int* loc0 = smalloc(int);
-    int* loc1 = smalloc(int);
-    int* loc2 = smalloc(int);
+    for (int i = 0; i < 10; ++i)
+    {
+        int  key   = i;
+        int* value = hashmap_get(map, &key);
+        if (value) { cprintf("Key: %d, Value: %d\n", key, *value); }
+        else { cprintf("Key: %d not found\n", key); }
+    }
 
-    cprintf("loc0 = %x, loc1 = %x, loc2 = %x\n", loc0, loc1, loc2);
+    // visit all buckets and prin
 
-    sfree(loc0);
-    sfree(loc1);
-    sfree(loc2);
+    for (int i = 0; i < 10; ++i)
+    {
+        int key    = i;
+        int result = hashmap_remove(map, &key);
+        if (result == 0) { cprintf("Key: %d removed\n", key); }
+        else { cprintf("Key: %d not found for removal\n", key); }
+    }
+
+    hashmap_destroy(map);
 
     sbi_shutdown();
 }
