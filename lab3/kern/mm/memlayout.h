@@ -53,6 +53,7 @@
 #include <defs.h>
 #include <atomic.h>
 #include <list.h>
+#include <hash_table.h>
 
 typedef uintptr_t pte_t;
 typedef uintptr_t pde_t;
@@ -72,6 +73,8 @@ struct Page
     list_entry_t page_link;      // free list link
     list_entry_t pra_page_link;  // used for pra (page replace algorithm)
     uintptr_t    pra_vaddr;      // used for pra (page replace algorithm)
+
+    hashtable_entry_t hash_entry;
 };
 
 /* Flags describing the status of a page frame */

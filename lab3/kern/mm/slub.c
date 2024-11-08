@@ -64,8 +64,9 @@ typedef struct slab
     list_entry_t slab_link;
 
 #ifdef USING_COUPLED_SLAB
-    list_entry_t ph_pra_page_link;
-    uintptr_t    ph_pra_vaddr;
+    list_entry_t      ph_pra_page_link;
+    uintptr_t         ph_pra_vaddr;
+    hashtable_entry_t hash_entry;
 #else
     struct Page* page;
 #endif
