@@ -14,6 +14,8 @@
 #include <vmm.h>
 #include <riscv.h>
 #include <slub.h>
+#include <hash_map.h>
+#include <sbi.h>
 
 // virtual address of physical page array
 struct Page* pages;
@@ -128,6 +130,31 @@ static void page_init(void)
     mem_begin         = ROUNDUP(freemem, PGSIZE);
     mem_end           = ROUNDDOWN(mem_end, PGSIZE);
     if (freemem < mem_end) { init_memmap(pa2page(mem_begin), (mem_end - mem_begin) / PGSIZE); }
+
+    cprintf("Start testing hash map\n");
+    slub_allocator_init();
+
+    // hashmap(int, int) map;
+
+    int* arr = smalloca(int, 15);
+    for (int i = 0; i < 10; i++) { arr[i] = i; }
+    for (int i = 0; i < 10; i++) { cprintf("arr[%d] = %d, addr = %x\n", i, arr[i], &arr[i]); }
+    int* arr2 = arr + 2;
+    cprintf("arr[2] = %d\n", *arr2);
+    cprintf("Should free size %d\n", sizeof(int) * 10);
+    sfree(arr);
+
+    int* loc0 = smalloc(int);
+    int* loc1 = smalloc(int);
+    int* loc2 = smalloc(int);
+
+    cprintf("loc0 = %x, loc1 = %x, loc2 = %x\n", loc0, loc1, loc2);
+
+    sfree(loc0);
+    sfree(loc1);
+    sfree(loc2);
+
+    sbi_shutdown();
 }
 
 static void enable_paging(void) __attribute__((unused));
@@ -194,7 +221,7 @@ void pmm_init(void)
     check_alloc_page();
     // create boot_pgdir, an initial page directory(Page Directory Table, PDT)
 
-    // 
+    //
 
     extern char boot_page_table_sv39[];
     boot_pgdir = (pte_t*)boot_page_table_sv39;

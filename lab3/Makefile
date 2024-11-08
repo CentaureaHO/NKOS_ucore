@@ -30,7 +30,7 @@ HOSTCFLAGS	:= -Wall -O2
 GDB		:= $(GCCPREFIX)gdb
 
 CC		:= $(GCCPREFIX)gcc
-CFLAGS  := -mcmodel=medany -O2 -s -std=gnu99 -Wall -Wextra -Werror
+CFLAGS  := -mcmodel=medany -O2 -s -std=gnu99 -Wall -Wextra -Werror -Wno-array-bounds
 CFLAGS	+= -fno-builtin -nostdinc $(DEFS)
 CFLAGS	+= -fno-stack-protector -ffunction-sections -fdata-sections
 CFLAGS	+= -g

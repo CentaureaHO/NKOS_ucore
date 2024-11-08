@@ -5,9 +5,10 @@
 #include <stdio.h>
 
 #define USING_COUPLED_SLAB
+#define DESTORY_FREED_SLAB
 
-#define CACHE_NUM 8
-static const size_t cache_size_min = 16;
+#define CACHE_NUM 10
+static const size_t cache_size_min = 4;
 static const size_t cache_size_max = cache_size_min << (CACHE_NUM - 1);
 
 #ifdef USING_COUPLED_SLAB
@@ -125,11 +126,17 @@ static void _slab_destroy(slub_cache_t* cache_ptr, slab_t* slab)
 
 static size_t _sized_index(size_t size)
 {
-    size_t rsize = ROUNDUP(size, 2);
+    size_t rsize = ROUNDUP(size, 4);
     if (rsize < cache_size_min) rsize = cache_size_min;
 
-    size_t index = 0;
-    for (int t = rsize / 32; t; t /= 2) ++index;
+    size_t index      = 0;
+    size_t cache_size = cache_size_min;
+
+    while (cache_size < rsize)
+    {
+        cache_size <<= 1;
+        ++index;
+    }
     return index;
 }
 
@@ -191,91 +198,66 @@ static void* _cache_alloc(slub_cache_t* cache_ptr)
     else
         list_add(&(cache_ptr->slabs_partial), le);
 
+    cprintf("Alloc object at %x with size %d\n", obj_ptr, cache_ptr->object_size);
+
     return obj_ptr;
 }
 
 static void _cache_free(slub_cache_t* cache_ptr, void* obj_ptr)
 {
+    void* kva = ROUNDDOWN(obj_ptr, PGSIZE);
 #ifdef USING_COUPLED_SLAB
-    void*   kva  = ROUNDDOWN(obj_ptr, PGSIZE);
     slab_t* slab = (slab_t*)&pages[(kva - page2kva(pages)) / PGSIZE];
-
-    int16_t* idx_buffer = kva;
-    void*    buf        = idx_buffer + cache_ptr->objects_per_slab;
-    int      offset     = (obj_ptr - buf) / cache_ptr->object_size;
-
-    list_del(&(slab->slab_link));
-    idx_buffer[offset] = slab->free_index;
-    slab->in_use--;
-    slab->free_index = offset;
-
-    if (slab->in_use == 0)
-        list_add(&(cache_ptr->slabs_free), &(slab->slab_link));
-    else
-        list_add(&(cache_ptr->slabs_partial), &(slab->slab_link));
 #else
-    void*   kva  = ROUNDDOWN(obj_ptr, PGSIZE);
     slab_t* slab = (slab_t*)kva;
-
-    int16_t* idx_buffer = (int16_t*)((char*)kva + sizeof(slab_t));
+#endif
+    int16_t* idx_buffer = kva;
     void*    buf        = (void*)(idx_buffer + cache_ptr->objects_per_slab);
     int      offset     = (obj_ptr - buf) / cache_ptr->object_size;
 
-    idx_buffer[offset] = slab->free_index;
-    slab->free_index   = offset;
-    --slab->in_use;
+#ifdef DESTORY_FREED_SLAB
+    memset(obj_ptr, 0xDE, cache_ptr->object_size);
+#endif
 
+    idx_buffer[offset] = slab->free_index;
+    slab->in_use--;
+    slab->free_index = offset;
     list_del(&(slab->slab_link));
 
     if (slab->in_use == 0)
         list_add(&(cache_ptr->slabs_free), &(slab->slab_link));
     else
         list_add(&(cache_ptr->slabs_partial), &(slab->slab_link));
-#endif
+
+    cprintf("Free object at %x with size %d\n", obj_ptr, cache_ptr->object_size);
 }
 
 static int _cache_shrink(slub_cache_t* cache_ptr)
 {
+    int           count = 0;
+    list_entry_t* le    = list_next(&(cache_ptr->slabs_free));
+
+    while (le != &(cache_ptr->slabs_free))
+    {
+        list_entry_t* temp = le;
+        le                 = list_next(le);
 #ifdef USING_COUPLED_SLAB
-    int           count = 0;
-    list_entry_t* le    = list_next(&(cache_ptr->slabs_free));
-    while (le != &(cache_ptr->slabs_free))
-    {
-        list_entry_t* temp = le;
-        le                 = list_next(le);
-        _slab_destroy(cache_ptr, (slab_t*)le2page((struct Page*)temp, page_link));
-        ++count;
-    }
+        slab_t* slab = (slab_t*)le2page((struct Page*)temp, page_link);
 #else
-    int           count = 0;
-    list_entry_t* le    = list_next(&(cache_ptr->slabs_free));
-    while (le != &(cache_ptr->slabs_free))
-    {
-        list_entry_t* temp = le;
-        le                 = list_next(le);
-        slab_t* slab       = le2slab(temp, slab_link);
+        slab_t* slab = le2slab(temp, slab_link);
+#endif
         _slab_destroy(cache_ptr, slab);
         ++count;
     }
-#endif
+
     return count;
 }
 
 void slub_allocator_init()
 {
 #ifdef USING_COUPLED_SLAB
-    _cache_pool.object_size      = sizeof(slub_cache_t);
     _cache_pool.objects_per_slab = PGSIZE / (sizeof(int16_t) + sizeof(slub_cache_t));
-
-    list_init(&(_cache_pool.slabs_full));
-    list_init(&(_cache_pool.slabs_partial));
-    list_init(&(_cache_pool.slabs_free));
-    list_init(&(_cache_registry));
-
-    list_add(&(_cache_registry), &(_cache_pool.cache_link));
-
-    for (size_t i = 0; i < CACHE_NUM; ++i) _caches[i] = _cache_create(cache_size_min << i);
-#else
+#endif
     _cache_pool.object_size = sizeof(slub_cache_t);
 
     list_init(&(_cache_pool.slabs_full));
@@ -285,12 +267,7 @@ void slub_allocator_init()
 
     list_add(&(_cache_registry), &(_cache_pool.cache_link));
 
-    cprintf("slub allocator initialized\n");
-
     for (size_t i = 0; i < CACHE_NUM; ++i) _caches[i] = _cache_create(cache_size_min << i);
-
-    cprintf("slub caches created\n");
-#endif
 }
 
 void* slub_malloc(size_t size)
@@ -306,13 +283,11 @@ int slub_free(void* obj_ptr)
     void* kva = ROUNDDOWN(obj_ptr, PGSIZE);
 #ifdef USING_COUPLED_SLAB
     slab_t* slab = (slab_t*)&pages[(kva - page2kva(pages)) / PGSIZE];
-    if (slab == NULL || slab->in_use == 0) return -1;
-    _cache_free(slab->cache_ptr, obj_ptr);
 #else
     slab_t* slab = (slab_t*)kva;
+#endif
     if (slab == NULL || slab->in_use == 0) return -1;
     _cache_free(slab->cache_ptr, obj_ptr);
-#endif
 
     return 0;
 }
