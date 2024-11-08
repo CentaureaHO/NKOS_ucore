@@ -40,8 +40,10 @@ int kern_init(void)
     *test_int2     = 1919810;
     cprintf("Malloc a int of %d\n", *test_int);
     // slub_free(test_int2);
-    if (slub_free(test_int2) == 0) cprintf("Release int2\n");
-    else cprintf("Fail to release int2\n");
+    if (slub_free(test_int2) == 0)
+        cprintf("Release int2\n");
+    else
+        cprintf("Fail to release int2\n");
 
     idt_init();  // init interrupt descriptor table
 
