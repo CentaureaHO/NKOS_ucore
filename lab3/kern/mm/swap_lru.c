@@ -40,10 +40,13 @@ static int _lru_map_swappable(struct mm_struct* mm, uintptr_t addr, struct Page*
 {
     (void)mm;
     (void)swap_in;
-    page->pra_vaddr      = addr;
-    page->hash_entry.key = addr;
 
-    hashtable_entry_t* found_entry = hashtable_get(&page_hash_table, addr, hash_function);
+    uintptr_t pagebase_addr = addr & ~(PGSIZE - 1);
+
+    page->pra_vaddr      = pagebase_addr;
+    page->hash_entry.key = pagebase_addr;
+
+    hashtable_entry_t* found_entry = hashtable_get(&page_hash_table, pagebase_addr, hash_function);
     if (found_entry != NULL)
     {
         struct Page* found_page = to_struct(found_entry, struct Page, hash_entry);
@@ -55,7 +58,7 @@ static int _lru_map_swappable(struct mm_struct* mm, uintptr_t addr, struct Page*
     hashtable_insert(&page_hash_table, &page->hash_entry, hash_function);
 
     list_add(&lru_list_head, &page->pra_page_link);
-    cprintf("Inserted page with vaddr 0x%x into LRU list.\n", addr);
+    cprintf("Inserted page with vaddr 0x%x into LRU list.\n", pagebase_addr);
     print_lru_list();
 
     return 0;
@@ -86,7 +89,10 @@ static int _lru_swap_out_victim(struct mm_struct* mm, struct Page** ptr_page, in
 
 static void* _lru_access_addr(uintptr_t addr)
 {
-    hashtable_entry_t* found_entry = hashtable_get(&page_hash_table, addr, hash_function);
+    uintptr_t pagebase_addr = addr & ~(PGSIZE - 1);
+    cprintf("Accessing page 0x%x in page 0x%x\n", addr, pagebase_addr);
+
+    hashtable_entry_t* found_entry = hashtable_get(&page_hash_table, pagebase_addr, hash_function);
     if (found_entry == NULL) return (void*)addr;
 
     struct Page* page = to_struct(found_entry, struct Page, hash_entry);
@@ -94,7 +100,7 @@ static void* _lru_access_addr(uintptr_t addr)
     list_del(&page->pra_page_link);
     list_add(&lru_list_head, &page->pra_page_link);
 
-    cprintf("Accessed page with vaddr 0x%x, moved to front of LRU list.\n", addr);
+    cprintf("Accessed page with vaddr 0x%x, moved to front of LRU list.\n", pagebase_addr);
     print_lru_list();
     return (void*)addr;
 }
@@ -205,6 +211,8 @@ static int _lru_check_swap(void)
     // lru list: 1000 5000 4000 3000
     assert(pgfault_num == 8);
     CHECK_LIST(pos, &lru_list_head, addr_array, idx, 0x1000, 0x5000, 0x4000, 0x3000);
+
+    *(unsigned char*)_lru_access_addr(0x1020) = 0x0a;
     return 0;
 }
 
