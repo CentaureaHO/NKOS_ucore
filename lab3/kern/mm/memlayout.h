@@ -75,6 +75,7 @@ struct Page
     uintptr_t    pra_vaddr;      // used for pra (page replace algorithm)
 
     hashtable_entry_t hash_entry;
+    int accessed; // 新增的访问标志，0: 未访问，1: 已访问
 };
 
 /* Flags describing the status of a page frame */

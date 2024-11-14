@@ -13,6 +13,8 @@ static hashtable_entry_t* hash_table_buckets[BUCKET_SIZE];
 static hashtable_t        page_hash_table;
 static list_entry_t       lru_list_head;
 
+
+
 static size_t hash_function(uintptr_t key) { return key % BUCKET_SIZE; }
 
 static void print_lru_list()
@@ -103,6 +105,24 @@ static void* _lru_access_addr(uintptr_t addr)
     cprintf("Accessed page with vaddr 0x%x, moved to front of LRU list.\n", pagebase_addr);
     print_lru_list();
     return (void*)addr;
+}
+
+
+// 时钟中断处理函数，检查并清除页面访问位
+void clock_interrupt_handler() {
+    list_entry_t* le = list_next(&lru_list_head);
+    
+    // 遍历 LRU 链表，检查页面访问位并清除
+    while (le != &lru_list_head) {
+        struct Page* page = to_struct(le, struct Page, pra_page_link);
+        if (page->accessed) {
+            page->accessed = 0;  // 清除访问位
+        } else {
+            // 访问位为0的页面可能需要被交换出去
+            // 根据你的实现，这里可以决定是否将页面交换出去
+        }
+        le = list_next(le);
+    }
 }
 
 #define CHECK_LIST(_pos, _list, _arr, _idx, _addr0, _addr1, _addr2, _addr3)  \
