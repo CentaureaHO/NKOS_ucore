@@ -6,14 +6,13 @@
 #include <swap_lru.h>
 #include <list.h>
 #include <hash_table.h>
+#include <clock.h>
 
 #define BUCKET_SIZE 4
 
 static hashtable_entry_t* hash_table_buckets[BUCKET_SIZE];
 static hashtable_t        page_hash_table;
 static list_entry_t       lru_list_head;
-
-
 
 static size_t hash_function(uintptr_t key) { return key % BUCKET_SIZE; }
 
@@ -89,42 +88,6 @@ static int _lru_swap_out_victim(struct mm_struct* mm, struct Page** ptr_page, in
     return 0;
 }
 
-static void* _lru_access_addr(uintptr_t addr)
-{
-    uintptr_t pagebase_addr = addr & ~(PGSIZE - 1);
-    cprintf("Accessing page 0x%x in page 0x%x\n", addr, pagebase_addr);
-
-    hashtable_entry_t* found_entry = hashtable_get(&page_hash_table, pagebase_addr, hash_function);
-    if (found_entry == NULL) return (void*)addr;
-
-    struct Page* page = to_struct(found_entry, struct Page, hash_entry);
-
-    list_del(&page->pra_page_link);
-    list_add(&lru_list_head, &page->pra_page_link);
-
-    cprintf("Accessed page with vaddr 0x%x, moved to front of LRU list.\n", pagebase_addr);
-    print_lru_list();
-    return (void*)addr;
-}
-
-
-// 时钟中断处理函数，检查并清除页面访问位
-void clock_interrupt_handler() {
-    list_entry_t* le = list_next(&lru_list_head);
-    
-    // 遍历 LRU 链表，检查页面访问位并清除
-    while (le != &lru_list_head) {
-        struct Page* page = to_struct(le, struct Page, pra_page_link);
-        if (page->accessed) {
-            page->accessed = 0;  // 清除访问位
-        } else {
-            // 访问位为0的页面可能需要被交换出去
-            // 根据你的实现，这里可以决定是否将页面交换出去
-        }
-        le = list_next(le);
-    }
-}
-
 #define CHECK_LIST(_pos, _list, _arr, _idx, _addr0, _addr1, _addr2, _addr3)  \
     {                                                                        \
         _idx    = 0;                                                         \
@@ -151,35 +114,40 @@ static int _lru_check_swap(void)
     CHECK_LIST(pos, &lru_list_head, addr_array, idx, 0x4000, 0x3000, 0x2000, 0x1000);
 
     cprintf("write Virt Page c in lru_check_swap\n");
-    *(unsigned char*)_lru_access_addr(0x3000) = 0x0c;
+    *(unsigned char*)0x3000 = 0x0c;
+    sleep(1);
     // 3000 exists, move to front
     // lru list: 3000 4000 2000 1000
     assert(pgfault_num == 4);
     CHECK_LIST(pos, &lru_list_head, addr_array, idx, 0x3000, 0x4000, 0x2000, 0x1000);
 
     cprintf("write Virt Page a in lru_check_swap\n");
-    *(unsigned char*)_lru_access_addr(0x1000) = 0x0a;
+    *(unsigned char*)0x1000 = 0x0a;
+    sleep(1);
     // 1000 exists, move to front
     // lru list: 1000 3000 4000 2000
     assert(pgfault_num == 4);
     CHECK_LIST(pos, &lru_list_head, addr_array, idx, 0x1000, 0x3000, 0x4000, 0x2000);
 
     cprintf("write Virt Page d in lru_check_swap\n");
-    *(unsigned char*)_lru_access_addr(0x4000) = 0x0d;
+    *(unsigned char*)0x4000 = 0x0d;
+    sleep(1);
     // 4000 exists, move to front
     // lru list: 4000 1000 3000 2000
     assert(pgfault_num == 4);
     CHECK_LIST(pos, &lru_list_head, addr_array, idx, 0x4000, 0x1000, 0x3000, 0x2000);
 
     cprintf("write Virt Page b in lru_check_swap\n");
-    *(unsigned char*)_lru_access_addr(0x2000) = 0x0b;
+    *(unsigned char*)0x2000 = 0x0b;
+    sleep(1);
     // 2000 exists, move to front
     // lru list: 2000 4000 1000 3000
     assert(pgfault_num == 4);
     CHECK_LIST(pos, &lru_list_head, addr_array, idx, 0x2000, 0x4000, 0x1000, 0x3000);
 
     cprintf("write Virt Page e in lru_check_swap\n");
-    *(unsigned char*)_lru_access_addr(0x5000) = 0x0e;
+    *(unsigned char*)0x5000 = 0x0e;
+    sleep(1);
     // 5000 does not exist, add to front
     // remove tail: 3000; pagefault_num: 4 -> 5
     // lru list: 5000 2000 4000 1000
@@ -187,21 +155,24 @@ static int _lru_check_swap(void)
     CHECK_LIST(pos, &lru_list_head, addr_array, idx, 0x5000, 0x2000, 0x4000, 0x1000);
 
     cprintf("write Virt Page b in lru_check_swap\n");
-    *(unsigned char*)_lru_access_addr(0x2000) = 0x0b;
+    *(unsigned char*)0x2000 = 0x0b;
+    sleep(1);
     // 2000 exists, move to front
     // lru list: 2000 5000 4000 1000
     assert(pgfault_num == 5);
     CHECK_LIST(pos, &lru_list_head, addr_array, idx, 0x2000, 0x5000, 0x4000, 0x1000);
 
     cprintf("write Virt Page a in lru_check_swap\n");
-    *(unsigned char*)_lru_access_addr(0x1000) = 0x0a;
+    *(unsigned char*)0x1000 = 0x0a;
+    sleep(1);
     // 1000 exists, move to front
     // lru list: 1000 2000 5000 4000
     assert(pgfault_num == 5);
     CHECK_LIST(pos, &lru_list_head, addr_array, idx, 0x1000, 0x2000, 0x5000, 0x4000);
 
     cprintf("write Virt Page c in lru_check_swap\n");
-    *(unsigned char*)_lru_access_addr(0x3000) = 0x0c;
+    *(unsigned char*)0x3000 = 0x0c;
+    sleep(1);
     // 3000 does not exist, add to front
     // remove tail: 4000; pagefault_num: 5 -> 6
     // lru list: 3000 1000 2000 5000
@@ -209,7 +180,8 @@ static int _lru_check_swap(void)
     CHECK_LIST(pos, &lru_list_head, addr_array, idx, 0x3000, 0x1000, 0x2000, 0x5000);
 
     cprintf("write Virt Page d in lru_check_swap\n");
-    *(unsigned char*)_lru_access_addr(0x4000) = 0x0d;
+    *(unsigned char*)0x4000 = 0x0d;
+    sleep(1);
     // 4000 does not exist, add to front
     // remove tail: 5000; pagefault_num: 6 -> 7
     // lru list: 4000 3000 1000 2000
@@ -217,7 +189,8 @@ static int _lru_check_swap(void)
     CHECK_LIST(pos, &lru_list_head, addr_array, idx, 0x4000, 0x3000, 0x1000, 0x2000);
 
     cprintf("write Virt Page e in lru_check_swap\n");
-    *(unsigned char*)_lru_access_addr(0x5000) = 0x0e;
+    *(unsigned char*)0x5000 = 0x0e;
+    sleep(1);
     // 5000 does not exist, add to front
     // remove tail: 2000; pagefault_num: 7 -> 8
     // lru list: 5000 4000 3000 1000
@@ -226,13 +199,30 @@ static int _lru_check_swap(void)
 
     cprintf("write Virt Page a in lru_check_swap\n");
     assert(*(unsigned char*)0x1000 == 0x0a);
-    *(unsigned char*)_lru_access_addr(0x1000) = 0x0a;
+    *(unsigned char*)0x1000 = 0x0a;
+    sleep(1);
     // 1000 exists, move to front
     // lru list: 1000 5000 4000 3000
     assert(pgfault_num == 8);
     CHECK_LIST(pos, &lru_list_head, addr_array, idx, 0x1000, 0x5000, 0x4000, 0x3000);
 
-    *(unsigned char*)_lru_access_addr(0x1020) = 0x0a;
+    *(unsigned char*)0x1020 = 0x0a;
+    sleep(1);
+    assert(pgfault_num == 8);
+    CHECK_LIST(pos, &lru_list_head, addr_array, idx, 0x1000, 0x5000, 0x4000, 0x3000);
+
+    *(unsigned char*)0x4000 = 0x0a;
+    *(unsigned char*)0x3000 = 0x0a;
+    *(unsigned char*)0x5000 = 0x0a;
+    // 按理来说，5000最后访问，应该放到最前
+    // 但由于遍历顺序，5000最先放最前，随后4000，3000
+    // 因此最终得到 3000 4000 5000 1000,而非5000 3000 4000 1000
+    sleep(1);
+    CHECK_LIST(pos, &lru_list_head, addr_array, idx, 0x3000, 0x4000, 0x5000, 0x1000);
+
+    *(unsigned char*)0x2000 = 0x0a;
+    // 缺页后换出1000，得到2000 3000 4000 5000
+
     return 0;
 }
 
@@ -247,18 +237,30 @@ static int _lru_set_unswappable(struct mm_struct* mm, uintptr_t addr)
 
 static int _lru_tick_event(struct mm_struct* mm)
 {
-    (void)mm;
+    list_entry_t* head = &lru_list_head;
+    list_for_each(head, &lru_list_head)
+    {
+        uintptr_t vaddr = to_struct(head, struct Page, pra_page_link)->pra_vaddr;
+
+        pte_t* ptep = get_pte(mm->pgdir, vaddr, 0);
+        if ((*ptep) & PTE_A)
+        {
+            cprintf("Accessed page 0x%x, move to front.\n", vaddr);
+            list_del(head);
+            list_add(&lru_list_head, head);
+        }
+
+        *ptep &= ~PTE_A;
+    }
+
     return 0;
 }
 
-struct swap_manager swap_manager_lru = {
-    .name            = "lru swap manager",
-    .init            = &_lru_init,
-    .init_mm         = &_lru_init_mm,
-    .tick_event      = &_lru_tick_event,
-    .map_swappable   = &_lru_map_swappable,
-    .set_unswappable = &_lru_set_unswappable,
-    .swap_out_victim = &_lru_swap_out_victim,
-    .check_swap      = &_lru_check_swap,
-    .access_addr     = &_lru_access_addr,
-};
+struct swap_manager swap_manager_lru = {.name = "lru swap manager",
+    .init                                     = &_lru_init,
+    .init_mm                                  = &_lru_init_mm,
+    .tick_event                               = &_lru_tick_event,
+    .map_swappable                            = &_lru_map_swappable,
+    .set_unswappable                          = &_lru_set_unswappable,
+    .swap_out_victim                          = &_lru_swap_out_victim,
+    .check_swap                               = &_lru_check_swap};

@@ -89,8 +89,6 @@ static int _fifo_swap_out_victim(struct mm_struct* mm, struct Page** ptr_page, i
     return 0;
 }
 
-static void* _fifo_access_addr(uintptr_t addr) { return (void*)addr; }
-
 static int _fifo_check_swap(void)
 {
     cprintf("write Virt Page c in fifo_check_swap\n");
@@ -159,5 +157,4 @@ struct swap_manager swap_manager_fifo = {
     .set_unswappable = &_fifo_set_unswappable,
     .swap_out_victim = &_fifo_swap_out_victim,
     .check_swap      = &_fifo_check_swap,
-    .access_addr     = &_fifo_access_addr,
 };

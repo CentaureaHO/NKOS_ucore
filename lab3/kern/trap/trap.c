@@ -11,8 +11,11 @@
 #include <vmm.h>
 #include <riscv.h>
 #include <sbi.h>
+#include <swap.h>
 
 #define TICK_NUM 100
+extern struct swap_manager* sm;
+extern struct mm_struct*    check_mm_struct;
 
 static void print_ticks()
 {
@@ -144,6 +147,7 @@ void interrupt_handler(struct trapframe* tf)
             // clear_csr(sip, SIP_STIP);
             clock_set_next_event();
             if (++ticks % TICK_NUM == 0) { print_ticks(); }
+            sm->tick_event(check_mm_struct);
             break;
         case IRQ_H_TIMER: cprintf("Hypervisor software interrupt\n"); break;
         case IRQ_M_TIMER: cprintf("Machine software interrupt\n"); break;

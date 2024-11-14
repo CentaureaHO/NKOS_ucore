@@ -3,6 +3,7 @@
 #include <sbi.h>
 #include <stdio.h>
 #include <riscv.h>
+#include <trap.h>
 
 volatile size_t ticks;
 
@@ -45,3 +46,25 @@ void clock_init(void)
 }
 
 void clock_set_next_event(void) { sbi_set_timer(get_cycles() + timebase); }
+
+void busy_wait(unsigned long long iterations)
+{
+    unsigned long long i = 0;
+    for (i = 0; i < iterations; i++) __asm__ volatile("nop");
+}
+
+int sleep(unsigned int time)
+{
+    if (time == 0) return 0;
+
+    unsigned long long iterations = 1000ULL * time;
+
+    busy_wait(iterations);
+
+    struct trapframe tf;
+    tf.cause = IRQ_S_TIMER;
+
+    interrupt_handler(&tf);
+
+    return 0;
+}
