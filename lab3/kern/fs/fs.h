@@ -3,8 +3,8 @@
 
 #include <mmu.h>
 
-#define SECTSIZE 512
-#define PAGE_NSECT (PGSIZE / SECTSIZE)  // 一页需要几个磁盘扇区?
+#define SECTSIZE 512            // sector size，扇区大小
+#define PAGE_NSECT (PGSIZE / SECTSIZE)  // 每页所需扇区数
 
 #define SWAP_DEV_NO 1
 

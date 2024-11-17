@@ -381,6 +381,7 @@ int do_pgfault(struct mm_struct* mm, uint_t error_code, uintptr_t addr)
                                          // create a PT.
     if (*ptep == 0)
     {
+        cprintf("pgdir_alloc_page in do_pgfault for addr %x\n", addr);
         if (pgdir_alloc_page(mm->pgdir, addr, perm) == NULL)
         {
             cprintf("pgdir_alloc_page in do_pgfault failed\n");
