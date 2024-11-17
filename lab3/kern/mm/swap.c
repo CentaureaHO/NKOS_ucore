@@ -39,7 +39,7 @@ int swap_init(void)
         panic("bad max_swap_offset %08x.\n", max_swap_offset);
     }
 
-    sm    = &swap_manager_lru;
+    sm    = &swap_manager_clock;
     int r = sm->init();
 
     if (r == 0)
