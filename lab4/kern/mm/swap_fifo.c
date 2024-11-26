@@ -6,6 +6,17 @@
 #include <swap_fifo.h>
 #include <list.h>
 
+/* Function Declartions */
+static int _fifo_init_mm(struct mm_struct* mm);  // 在mm_struct内部初始化私有数据
+static int _fifo_map_swappable(
+    struct mm_struct* mm, uintptr_t addr, struct Page* page, int swap_in);  // 将可置换页面映射到mm_struct中
+static int _fifo_swap_out_victim(struct mm_struct* mm, struct Page** ptr_page, int in_tick);  // 选择要换出的页面
+static int _fifo_check_swap(void);
+
+static int _fifo_init(void);                                             // 全局初始化，未实现
+static int _fifo_set_unswappable(struct mm_struct* mm, uintptr_t addr);  // 将页面设置为不可换出，未实现
+static int _fifo_tick_event(struct mm_struct* mm);  // 在系统时钟中断发生时调用，FIFO不需要，未实现
+
 /* [wikipedia]The simplest Page Replacement Algorithm(PRA) is a FIFO algorithm. The first-in, first-out
  * page replacement algorithm is a low-overhead algorithm that requires little book-keeping on
  * the part of the operating system. The idea is obvious from the name - the operating system
@@ -25,7 +36,7 @@
  *              le2page (in memlayout.h), (in future labs: le2vma (in vmm.h), le2proc (in proc.h),etc.
  */
 
-list_entry_t pra_list_head;
+static list_entry_t pra_list_head;
 /*
  * (2) _fifo_init_mm: init pra_list_head and let  mm->sm_priv point to the addr of pra_list_head.
  *              Now, From the memory control struct mm_struct, we can access FIFO PRA
@@ -43,14 +54,17 @@ static int _fifo_init_mm(struct mm_struct* mm)
  */
 static int _fifo_map_swappable(struct mm_struct* mm, uintptr_t addr, struct Page* page, int swap_in)
 {
+    (void)(addr);
+    (void)(swap_in);
+
     list_entry_t* head  = (list_entry_t*)mm->sm_priv;
     list_entry_t* entry = &(page->pra_page_link);
 
     assert(entry != NULL && head != NULL);
     // record the page access situlation
-    /*LAB3 EXERCISE 2: YOUR CODE*/
+
     //(1)link the most recent arrival page at the back of the pra_list_head qeueue.
-    list_add_before(head, entry);
+    list_add(head, entry);
     return 0;
 }
 /*
@@ -63,12 +77,15 @@ static int _fifo_swap_out_victim(struct mm_struct* mm, struct Page** ptr_page, i
     assert(head != NULL);
     assert(in_tick == 0);
     /* Select the victim */
-    /*LAB3 EXERCISE 2: YOUR CODE*/
     //(1)  unlink the  earliest arrival page in front of pra_list_head qeueue
     //(2)  set the addr of addr of this page to ptr_page
-    list_entry_t* entry = list_next(head);
-    list_del(entry);
-    *ptr_page = le2page(entry, pra_page_link);
+    list_entry_t* entry = list_prev(head);
+    if (entry != head)
+    {
+        list_del(entry);
+        *ptr_page = le2page(entry, pra_page_link);
+    }
+    else { *ptr_page = NULL; }
     return 0;
 }
 
@@ -116,9 +133,20 @@ static int _fifo_check_swap(void)
 
 static int _fifo_init(void) { return 0; }
 
-static int _fifo_set_unswappable(struct mm_struct* mm, uintptr_t addr) { return 0; }
+static int _fifo_set_unswappable(struct mm_struct* mm, uintptr_t addr)
+{
+    (void)(mm);
+    (void)(addr);
+    return 0;
+}
 
-static int _fifo_tick_event(struct mm_struct* mm) { return 0; }
+static int _fifo_tick_event(struct mm_struct* mm)
+{
+    (void)(mm);  // FIFO不依赖于时间来选择替换页面
+                 // 但为了保持接口一致性，保留了此函数
+                 // 为了抑制编译器的警告，象征性操作mm
+    return 0;
+}
 
 struct swap_manager swap_manager_fifo = {
     .name            = "fifo swap manager",

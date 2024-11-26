@@ -9,7 +9,12 @@ void wakeup_proc(struct proc_struct* proc)
     assert(proc->state != PROC_ZOMBIE && proc->state != PROC_RUNNABLE);
     proc->state = PROC_RUNNABLE;
 }
-
+/*
+1．设置当前内核线程current->need_resched为0； 、
+2．在proc_list队列中查找下一个处于“就绪”态的线程或进程next；
+3．找到这样的进程后，就调用proc_run函数，保存当前进程current的执行现场（进程上下文），
+恢复新进程的执行现场，完成进程切换。
+ */
 void schedule(void)
 {
     bool                intr_flag;

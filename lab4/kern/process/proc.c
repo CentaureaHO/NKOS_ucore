@@ -60,6 +60,7 @@ SYS_getpid      : get the process's pid
 */
 
 // the process set's list
+//所有进程控制块的双向线性列表
 list_entry_t proc_list;
 
 #define HASH_SHIFT 10
@@ -67,13 +68,16 @@ list_entry_t proc_list;
 #define pid_hashfn(x) (hash32(x, HASH_SHIFT))
 
 // has list for process set based on pid
+//所有进程控制块的哈希表，proc_struct中的成员变量hash_link将基于pid链接入这个哈希表中
 static list_entry_t hash_list[HASH_LIST_SIZE];
 
 // idle proc
 struct proc_struct* idleproc = NULL;
 // init proc
+//本实验中，指向一个内核线程。本实验以后，此指针将指向第一个用户态进程
 struct proc_struct* initproc = NULL;
 // current proc
+//当前占用CPU且处于“运行”状态进程控制块指针
 struct proc_struct* current = NULL;
 
 static int nr_process = 0;
@@ -104,6 +108,18 @@ static struct proc_struct* alloc_proc(void)
          *       uint32_t flags;                             // Process flag
          *       char name[PROC_NAME_LEN + 1];               // Process name
          */
+        proc->state       = PROC_UNINIT;
+        proc->pid         = -1;
+        proc->runs        = 0;
+        proc->kstack      = 0;
+        proc->need_resched = 0;
+        proc->parent       = NULL;
+        proc->mm           = NULL;
+        memset(&(proc->context), 0, sizeof(struct context));
+        proc->tf   = NULL;
+        proc->cr3  = boot_cr3;
+        proc->flags = 0;
+        memset(proc->name, 0, PROC_NAME_LEN + 1);
     }
     return proc;
 }
@@ -159,23 +175,34 @@ static int get_pid(void)
     return last_pid;
 }
 
-// proc_run - make process "proc" running on cpu
-// NOTE: before call switch_to, should load  base addr of "proc"'s new PDT
+// proc_run - 将进程"proc"切换到CPU上运行
+// 注意：在调用switch_to之前，应该加载"proc"的新PDT基地址
 void proc_run(struct proc_struct* proc)
 {
     if (proc != current)
     {
         // LAB4:EXERCISE3 YOUR CODE
         /*
-         * Some Useful MACROs, Functions and DEFINEs, you can use them in below implementation.
-         * MACROs or Functions:
-         *   local_intr_save():        Disable interrupts
-         *   local_intr_restore():     Enable Interrupts
-         *   lcr3():                   Modify the value of CR3 register
-         *   switch_to():              Context switching between two processes
+         * 一些有用的宏、函数和定义，下面的实现中可以使用它们。
+         * 宏或函数：
+         *   local_intr_save():        禁用中断
+         *   local_intr_restore():     启用中断
+         *   lcr3():                   修改CR3寄存器的值
+         *   switch_to():              在两个进程之间进行上下文切换
          */
+        bool intr_flag;
+        struct proc_struct* from = current, *to = proc;
+        local_intr_save(intr_flag);
+        {
+            current = proc;
+            lcr3(to->cr3);
+            switch_to(&(from->context), &(to->context));
+        }
+        // 允许中断
+        local_intr_restore(intr_flag);
     }
 }
+
 
 // forkret -- the first kernel entry point of a new thread/process
 // NOTE: the addr of forkret is setted in copy_thread function
@@ -203,14 +230,24 @@ struct proc_struct* find_proc(int pid)
 // kernel_thread - create a kernel thread using "fn" function
 // NOTE: the contents of temp trapframe tf will be copied to
 //       proc->tf in do_fork-->copy_thread function
+//kernel_thread函数采用了局部变量tf来放置保存内核线程的临时中断帧，
+//并把中断帧的指针传递给do_fork函数
 int kernel_thread(int (*fn)(void*), void* arg, uint32_t clone_flags)
 {
+    // 对trameframe，也就是我们程序的一些上下文进行一些初始化
     struct trapframe tf;
     memset(&tf, 0, sizeof(struct trapframe));
-    tf.gpr.s0 = (uintptr_t)fn;
-    tf.gpr.s1 = (uintptr_t)arg;
+    // 设置内核线程的参数和函数指针    
+    tf.gpr.s0 = (uintptr_t)fn;   // s0 寄存器保存函数指针
+    tf.gpr.s1 = (uintptr_t)arg;  // s1 寄存器保存函数参数
+    // 设置 trapframe 中的 status 寄存器（SSTATUS）
+    // SSTATUS_SPP：Supervisor Previous Privilege（设置为 supervisor 模式，因为这是一个内核线程）
+    // SSTATUS_SPIE：Supervisor Previous Interrupt Enable（设置为启用中断，因为这是一个内核线程）
+    // SSTATUS_SIE：Supervisor Interrupt Enable（设置为禁用中断，因为我们不希望该线程被中断）    
     tf.status = (read_csr(sstatus) | SSTATUS_SPP | SSTATUS_SPIE) & ~SSTATUS_SIE;
+    // 将入口点（epc）设置为 kernel_thread_entry 函数，作用实际上是将pc指针指向它(*trapentry.S会用到)
     tf.epc    = (uintptr_t)kernel_thread_entry;
+    // 使用 do_fork 创建一个新进程（内核线程），这样才真正用设置的tf创建新进程。
     return do_fork(clone_flags | CLONE_VM, 0, &tf);
 }
 
@@ -242,21 +279,22 @@ static int copy_mm(uint32_t clone_flags, struct proc_struct* proc)
 //             - setup the kernel entry point and stack of process
 static void copy_thread(struct proc_struct* proc, uintptr_t esp, struct trapframe* tf)
 {
+    //首先在上面分配的内核栈上分配出一片空间来保存trapframe
     proc->tf    = (struct trapframe*)(proc->kstack + KSTACKSIZE - sizeof(struct trapframe));
     *(proc->tf) = *tf;
-
+    //然后，我们将trapframe中的a0寄存器（返回值）设置为0，说明这个进程是一个子进程
     // Set a0 to 0 so a child process knows it's just forked
     proc->tf->gpr.a0 = 0;
     proc->tf->gpr.sp = (esp == 0) ? (uintptr_t)proc->tf : esp;
-
+    //之后我们将上下文中的ra设置为了forkret函数的入口，并且把trapframe放在上下文的栈顶
     proc->context.ra = (uintptr_t)forkret;
     proc->context.sp = (uintptr_t)(proc->tf);
 }
 
-/* do_fork -     parent process for a new child process
- * @clone_flags: used to guide how to clone the child process
- * @stack:       the parent's user stack pointer. if stack==0, It means to fork a kernel thread.
- * @tf:          the trapframe info, which will be copied to child process's proc->tf
+/* do_fork -     父进程为新的子进程创建
+ * @clone_flags: 用于指导如何克隆子进程
+ * @stack:       父进程的用户栈指针。如果stack==0，表示要克隆一个内核线程。
+ * @tf:          中断帧信息，将被复制到子进程的proc->tf中
  */
 int do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe* tf)
 {
@@ -266,30 +304,48 @@ int do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe* tf)
     ret = -E_NO_MEM;
     // LAB4:EXERCISE2 YOUR CODE
     /*
-     * Some Useful MACROs, Functions and DEFINEs, you can use them in below implementation.
-     * MACROs or Functions:
-     *   alloc_proc:   create a proc struct and init fields (lab4:exercise1)
-     *   setup_kstack: alloc pages with size KSTACKPAGE as process kernel stack
-     *   copy_mm:      process "proc" duplicate OR share process "current"'s mm according clone_flags
-     *                 if clone_flags & CLONE_VM, then "share" ; else "duplicate"
-     *   copy_thread:  setup the trapframe on the  process's kernel stack top and
-     *                 setup the kernel entry point and stack of process
-     *   hash_proc:    add proc into proc hash_list
-     *   get_pid:      alloc a unique pid for process
-     *   wakeup_proc:  set proc->state = PROC_RUNNABLE
-     * VARIABLES:
-     *   proc_list:    the process set's list
-     *   nr_process:   the number of process set
+     * 一些有用的宏、函数和定义，下面的实现中可以使用它们。
+     * 宏或函数：
+     *   alloc_proc:   创建一个proc结构并初始化字段（lab4:exercise1）
+     *   setup_kstack: 为进程分配大小为KSTACKPAGE的内核栈
+     *   copy_mm:      进程"proc"复制或共享进程"current"的内存管理系统(mm)，依据clone_flags
+     *                 如果clone_flags & CLONE_VM，则"共享"；否则"复制"
+     *   copy_thread:  在进程的内核栈顶部设置中断帧，并
+     *                 设置进程的内核入口点和栈
+     *   hash_proc:    将进程添加到进程哈希链表中
+     *   get_pid:      为进程分配一个唯一的pid
+     *   wakeup_proc:  设置proc->state = PROC_RUNNABLE，使进程就绪
+     * 变量：
+     *   proc_list:    进程集合的链表
+     *   nr_process:   当前进程集合的数量
+     * 
+     * 分配并初始化进程控制块（alloc_proc函数）
+     * 分配并初始化内核栈（setup_stack函数）
+     * 根据clone_flags决定是复制还是共享内存管理系统（copy_mm函数）
+     * 设置进程的中断帧和上下文（copy_thread函数）
+     * 把设置好的进程加入链表
+     * 将新建的进程设为就绪态
+     * 将返回值设为线程id
      */
 
-    //    1. call alloc_proc to allocate a proc_struct
-    //    2. call setup_kstack to allocate a kernel stack for child process
-    //    3. call copy_mm to dup OR share mm according clone_flag
-    //    4. call copy_thread to setup tf & context in proc_struct
-    //    5. insert proc_struct into hash_list && proc_list
-    //    6. call wakeup_proc to make the new child process RUNNABLE
-    //    7. set ret vaule using child proc's pid
-
+    //    1. 调用alloc_proc分配一个proc_struct
+    proc = alloc_proc();
+    proc->pid=get_pid();
+    proc->parent=current;
+    //    2. 调用setup_kstack为子进程分配一个内核栈
+    setup_kstack(proc);
+    //    3. 调用copy_mm根据clone_flag复制或共享内存
+    copy_mm(clone_flags, proc);
+    //    4. 调用copy_thread设置tf和上下文在proc_struct中
+    copy_thread(proc, stack, tf);
+    //    5. 将proc_struct插入哈希链表和进程链表
+    hash_proc(proc);
+    list_add_before(&proc_list, &(proc->list_link));
+    nr_process++;
+    //    6. 调用wakeup_proc将新进程设为可运行状态
+    proc->state = PROC_RUNNABLE;
+    //    7. 使用子进程的pid设置ret值
+    ret = proc->pid;
 fork_out:
     return ret;
 
@@ -320,12 +376,12 @@ static int init_main(void* arg)
 void proc_init(void)
 {
     int i;
-
+    //初始化进程控制块的双向链表和哈希表
     list_init(&proc_list);
     for (i = 0; i < HASH_LIST_SIZE; i++) { list_init(hash_list + i); }
-
+    //初始化idleproc内核线程
     if ((idleproc = alloc_proc()) == NULL) { panic("cannot alloc idleproc.\n"); }
-
+    //设置idleproc内核线程的进程ID为0
     // check the proc structure
     int* context_mem = (int*)kmalloc(sizeof(struct context));
     memset(context_mem, 0, sizeof(struct context));
@@ -334,18 +390,20 @@ void proc_init(void)
     int* proc_name_mem = (int*)kmalloc(PROC_NAME_LEN);
     memset(proc_name_mem, 0, PROC_NAME_LEN);
     int proc_name_flag = memcmp(&(idleproc->name), proc_name_mem, PROC_NAME_LEN);
-
+    // proc->state = PROC_UNINIT;  设置进程为“初始”态
+    //proc->pid = -1;             设置进程pid的未初始化值
+    //proc->cr3 = boot_cr3;       使用内核页目录表的基址
     if (idleproc->cr3 == boot_cr3 && idleproc->tf == NULL && !context_init_flag && idleproc->state == PROC_UNINIT &&
         idleproc->pid == -1 && idleproc->runs == 0 && idleproc->kstack == 0 && idleproc->need_resched == 0 &&
         idleproc->parent == NULL && idleproc->mm == NULL && idleproc->flags == 0 && !proc_name_flag)
     {
         cprintf("alloc_proc() correct!\n");
     }
-
+    //idleproc内核线程进行进一步初始化
     idleproc->pid          = 0;
     idleproc->state        = PROC_RUNNABLE;
     idleproc->kstack       = (uintptr_t)bootstack;
-    idleproc->need_resched = 1;
+    idleproc->need_resched = 1;//只要此标志为1，马上就调用schedule函数要求调度器切换其他进程执行。
     set_proc_name(idleproc, "idle");
     nr_process++;
 

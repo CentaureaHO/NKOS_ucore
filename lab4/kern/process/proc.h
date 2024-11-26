@@ -41,21 +41,22 @@ extern list_entry_t proc_list;
 
 struct proc_struct
 {
-    enum proc_state     state;                    // Process state
-    int                 pid;                      // Process ID
-    int                 runs;                     // the running times of Proces
-    uintptr_t           kstack;                   // Process kernel stack
-    volatile bool       need_resched;             // bool value: need to be rescheduled to release CPU?
-    struct proc_struct* parent;                   // the parent process
-    struct mm_struct*   mm;                       // Process's memory management field
-    struct context      context;                  // Switch here to run process
-    struct trapframe*   tf;                       // Trap frame for current interrupt
-    uintptr_t           cr3;                      // CR3 register: the base addr of Page Directroy Table(PDT)
-    uint32_t            flags;                    // Process flag
-    char                name[PROC_NAME_LEN + 1];  // Process name
-    list_entry_t        list_link;                // Process link list
-    list_entry_t        hash_link;                // Process hash list
+    enum proc_state     state;                    // 进程状态(PROC_UNINIT、PROC_SLEEPING、PROC_RUNNABLE、PROC_ZOMBIE)
+    int                 pid;                      // 进程ID
+    int                 runs;                     // 进程运行次数
+    uintptr_t           kstack;                   // 进程内核栈
+    volatile bool       need_resched;             // 布尔值：是否需要重新调度以释放CPU？
+    struct proc_struct* parent;                   // 父进程（在内核中，只有内核创建的idle进程没有父进程，其他进程都有父进程）
+    struct mm_struct*   mm;                       // 进程的内存管理字段，包括内存映射和虚拟内存管理
+    struct context      context;                  // 切换到这里以运行进程，进程的上下文
+    struct trapframe*   tf;                       // 当前中断的陷阱帧，保存了进程的中断帧。当进程从用户空间跳进内核空间的时候，进程的执行状态被保存在了中断帧中
+    uintptr_t           cr3;                      // CR3寄存器：页目录表(PDT)的基地址
+    uint32_t            flags;                    // 进程标志
+    char                name[PROC_NAME_LEN + 1];  // 进程名称
+    list_entry_t        list_link;                // 进程链表链接
+    list_entry_t        hash_link;                // 进程哈希链表链接
 };
+
 
 #define le2proc(le, member) to_struct((le), struct proc_struct, member)
 

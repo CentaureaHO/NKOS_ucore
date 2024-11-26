@@ -38,6 +38,7 @@ int kern_init(void)
 
     vmm_init();   // init virtual memory management
     proc_init();  // init process table
+    //完成了idleproc内核线程和initproc内核线程的创建或复制工作
 
     ide_init();   // init ide devices
     swap_init();  // init swap
