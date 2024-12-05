@@ -108,16 +108,16 @@ static struct proc_struct* alloc_proc(void)
          *       uint32_t flags;                             // Process flag
          *       char name[PROC_NAME_LEN + 1];               // Process name
          */
-        proc->state       = PROC_UNINIT;
-        proc->pid         = -1;
-        proc->runs        = 0;
-        proc->kstack      = 0;
-        proc->need_resched = 0;
-        proc->parent       = NULL;
-        proc->mm           = NULL;
-        memset(&(proc->context), 0, sizeof(struct context));
-        proc->tf   = NULL;
-        proc->cr3  = boot_cr3;
+        proc->state       = PROC_UNINIT;// 设置进程为“未初始化”状态——即第0个内核线程（空闲进程idleproc）
+        proc->pid         = -1;         // 设置进程PID为未初始化值，即-1
+        proc->runs        = 0;          // 根据提示可知该成员变量表示进程的运行时间，初始化为0
+        proc->kstack      = 0;          // 进程内核栈初始化为空【kstack记录了分配给该进程/线程的内核栈的位置】
+        proc->need_resched = 0;          // 是否需要重新调度以释放 CPU？当然了，我们现在处于未初始化状态，不需要进行调度
+        proc->parent       = NULL;      // 父进程控制块指针
+        proc->mm           = NULL;      // 进程的内存管理字段
+        memset(&(proc->context), 0, sizeof(struct context));  // 上下文，现在是源头，当然为空，发生切换时修改
+        proc->tf   = NULL;              // 进程中断帧，初始化为空，发生中断时修改
+        proc->cr3  = boot_cr3;         // 页表基址初始化——在pmm_init中初始化页表基址，实际上是satp寄存器
         proc->flags = 0;
         memset(proc->name, 0, PROC_NAME_LEN + 1);
     }
@@ -329,13 +329,19 @@ int do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe* tf)
      */
 
     //    1. 调用alloc_proc分配一个proc_struct
-    proc = alloc_proc();
+    if ((proc = alloc_proc()) == NULL) {
+        goto fork_out;
+    }
     proc->pid=get_pid();
     proc->parent=current;
     //    2. 调用setup_kstack为子进程分配一个内核栈
-    setup_kstack(proc);
+    if (setup_kstack(proc) == -E_NO_MEM) {  // 检查进程内核栈分配是否成功（实际上复制了父进程的内核栈），如果返回-E_NO_MEM表示由于内存不足分配失败，我们需要处理已分配的子进程
+        goto bad_fork_cleanup_proc;
+    }
     //    3. 调用copy_mm根据clone_flag复制或共享内存
-    copy_mm(clone_flags, proc);
+    if (copy_mm(clone_flags, proc) != 0) {  // 本次实验中没有具体实现该函数功能，仅仅使用assert做判断模拟该函数错误情况，如果没有错误返回值为0，有错误那么我们需要释放初始化的子进程内核栈
+        goto bad_fork_cleanup_kstack;
+    }
     //    4. 调用copy_thread设置tf和上下文在proc_struct中
     copy_thread(proc, stack, tf);
     //    5. 将proc_struct插入哈希链表和进程链表
@@ -360,6 +366,10 @@ bad_fork_cleanup_proc:
 //   1. call exit_mmap & put_pgdir & mm_destroy to free the almost all memory space of process
 //   2. set process' state as PROC_ZOMBIE, then call wakeup_proc(parent) to ask parent reclaim itself.
 //   3. call scheduler to switch to other process
+//do_exit-由sys_exit调用
+//1.调用exit_mmap&put_pgdir&mm_destroy以释放进程的几乎所有内存空间
+//2.将进程的状态设置为PROC_ZOMBIE，然后调用wakeup_PROC（parent）命令父进程自行回收。
+//3.调用调度程序切换到其他进程
 int do_exit(int error_code) { panic("process exit!!.\n"); }
 
 // init_main - the second kernel thread used to create user_main kernel threads
