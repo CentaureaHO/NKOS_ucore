@@ -38,7 +38,7 @@ CTYPE	:= c S
 
 LD      := $(GCCPREFIX)ld
 LDFLAGS	:= -m elf64lriscv
-LDFLAGS	+= -nostdlib --gc-sections --print-gc-sections
+LDFLAGS	+= -nostdlib --gc-sections # --print-gc-sections
 
 OBJCOPY := $(GCCPREFIX)objcopy
 OBJDUMP := $(GCCPREFIX)objdump

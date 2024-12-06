@@ -56,12 +56,12 @@ void __attribute__((noinline)) grade_backtrace2(int arg0, int arg1, int arg2, in
 
 void __attribute__((noinline)) grade_backtrace1(int arg0, int arg1)
 {
-    grade_backtrace2(arg0, (int)&arg0, arg1, (int)&arg1);
+    grade_backtrace2(arg0, (uintptr_t)&arg0, arg1, (uintptr_t)&arg1);
 }
 
 void __attribute__((noinline)) grade_backtrace0(int arg0, int arg1, int arg2) { grade_backtrace1(arg0, arg2); }
 
-void grade_backtrace(void) { grade_backtrace0(0, (int)kern_init, 0xffff0000); }
+void grade_backtrace(void) { grade_backtrace0(0, (uintptr_t)kern_init, 0xffff0000); }
 
 static void lab1_print_cur_status(void)
 {

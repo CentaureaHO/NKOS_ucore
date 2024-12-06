@@ -8,6 +8,7 @@
 #include <memlayout.h>
 #include <pmm.h>
 #include <mmu.h>
+#include <clock.h>
 
 // the valid vaddr for check is between 0~CHECK_VALID_VADDR-1
 #define CHECK_VALID_VIR_PAGE_NUM 5
