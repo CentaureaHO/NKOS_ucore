@@ -31,7 +31,7 @@ static struct proc_struct *alloc_proc(void) {
     // 使用kmalloc分配内存空间给新的proc_struct
     struct proc_struct *proc = kmalloc(sizeof(struct proc_struct));
     if (proc != NULL) {
-        // LAB4:EXERCISE1 你的代码
+        // LAB4:EXERCISE1 2210878 2210983 2213040
         /** 需要初始化的proc_struct中的字段 */
         proc->state = PROC_UNINIT;            // 设置进程状态为未初始化
         proc->pid = -1;                       // 设置进程ID为-1（还未分配）
@@ -196,7 +196,7 @@ void proc_run(struct proc_struct *proc)
     // 只有当proc不是当前进程时才需要进行上下文切换
     if (proc != current)
     {
-        // LAB4:EXERCISE3 你的代码
+        // LAB4:EXERCISE3 2210878 2210983 2213040
         /*
          * 以下是一些有用的宏、函数和定义，你可以在下面的实现中使用它们。
          * 宏或函数:
