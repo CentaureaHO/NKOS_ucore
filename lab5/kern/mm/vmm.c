@@ -439,15 +439,12 @@ int do_pgfault(struct mm_struct* mm, uint_t error_code, uintptr_t addr)
         if (swap_init_ok)
         {
             struct Page* page = NULL;
-            // 你要编写的内容在这里，请基于上文说明以及下文的英文注释完成代码编写
-            //(1）According to the mm AND addr, try
-            // to load the content of right disk page
-            // into the memory which page managed.
-            //(2) According to the mm,
-            // addr AND page, setup the
-            // map of phy addr <--->
-            // logical addr
-            //(3) make the page swappable.
+            // (1) 根据 mm 和 addr，尝试将对应磁盘页的内容加载到内存中管理的页内。
+            swap_in(mm, addr, &page);
+            // (2) 根据 mm、addr 和 page，设置物理地址 <--> 逻辑地址的映射关系。
+            page_insert(mm->pgdir, page, addr, perm);
+            // (3) 使该页可以交换（swappable）。
+            swap_map_swappable(mm, addr, page, 1);
             page->pra_vaddr = addr;
         }
         else
