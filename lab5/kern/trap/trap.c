@@ -163,7 +163,7 @@ void kernel_execve_ret(struct trapframe* tf, uintptr_t kstacktop);
 void exception_handler(struct trapframe* tf)
 {
     int ret;
-    switch (tf->cause)
+    switch (tf->cause)//通过中断帧里 scause寄存器的数值，判断出当前是来自USER_ECALL的异常
     {
         case CAUSE_MISALIGNED_FETCH: cprintf("Instruction address misaligned\n"); break;
         case CAUSE_FETCH_ACCESS: cprintf("Instruction access fault\n"); break;
@@ -173,6 +173,9 @@ void exception_handler(struct trapframe* tf)
             if (tf->gpr.a7 == 10)
             {
                 tf->epc += 4;
+                //sepc寄存器是产生异常的指令的位置，在异常处理结束后，会回到sepc的位置继续执行
+                //对于ecall, 我们希望sepc寄存器要指向产生异常的指令(ecall)的下一条指令
+                //否则就会回到ecall执行再执行一次ecall, 无限循环
                 syscall();
                 kernel_execve_ret(tf, current->kstack + KSTACKSIZE);
             }

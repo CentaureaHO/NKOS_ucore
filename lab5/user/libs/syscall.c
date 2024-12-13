@@ -25,6 +25,8 @@ static inline int syscall(int64_t num, ...)
                  : "=m"(ret)
                  : "m"(num), "m"(a[0]), "m"(a[1]), "m"(a[2]), "m"(a[3]), "m"(a[4])
                  : "memory");
+    //num存到a0寄存器， a[0]存到a1寄存器
+    //ecall的返回值存到ret
     return ret;
 }
 

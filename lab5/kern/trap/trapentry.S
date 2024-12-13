@@ -1,5 +1,9 @@
 #include <riscv.h>
 
+
+# 若在中断之前处于 U mode(用户态)
+# 则 sscratch 保存的是内核栈地址
+# 否则中断之前处于 S mode(内核态)，sscratch 保存的是 0
     .altmacro
     .align 2
     .macro SAVE_ALL
@@ -52,13 +56,14 @@ _save_context:
     # get sr, epc, tval, cause
     # Set sscratch register to 0, so that if a recursive exception
     # occurs, the exception vector knows it came from the kernel
+    #如果之前是用户态产生的中断，用户栈指针从sscratch里挪到了s0寄存器， sscratch清零
     csrrw s0, sscratch, x0
     csrr s1, sstatus
     csrr s2, sepc
     csrr s3, 0x143
     csrr s4, scause
 
-    STORE s0, 2*REGBYTES(sp)
+    STORE s0, 2*REGBYTES(sp)  #如果之前是用户态发生中断，此时用户栈指针存到了内存里
     STORE s1, 32*REGBYTES(sp)
     STORE s2, 33*REGBYTES(sp)
     STORE s3, 34*REGBYTES(sp)
@@ -72,7 +77,7 @@ _save_context:
     LOAD s1, 32*REGBYTES(sp)
     LOAD s2, 33*REGBYTES(sp)
 
-    andi s0, s1, SSTATUS_SPP
+    andi s0, s1, SSTATUS_SPP    #可以通过SSTATUS_SPP的值判断之前是用户态还是内核态
     bnez s0, _restore_context
 
 _save_kernel_sp:
@@ -115,7 +120,7 @@ _restore_context:
     LOAD x30, 30*REGBYTES(sp)
     LOAD x31, 31*REGBYTES(sp)
     # restore sp last
-    LOAD x2, 2*REGBYTES(sp)
+    LOAD x2, 2*REGBYTES(sp) #如果是用户态产生的中断，此时sp恢复为用户栈指针
     .endm
 
     .globl __alltraps

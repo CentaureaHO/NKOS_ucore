@@ -457,7 +457,7 @@ int do_pgfault(struct mm_struct* mm, uint_t error_code, uintptr_t addr)
 failed:
     return ret;
 }
-
+//检查从addr开始长为len的一段内存能否被用户态程序访问
 bool user_mem_check(struct mm_struct* mm, uintptr_t addr, size_t len, bool write)
 {
     if (mm != NULL)
