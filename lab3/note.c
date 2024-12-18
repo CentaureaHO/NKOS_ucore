@@ -3,7 +3,7 @@ mmu检测非法PTE_V->trap.c / trap(struct trapframe* tf)->trap.c / exception_ha
     pgfault_handler(struct trapframe* tf)->vmm.c /
     do_pgfault(struct mm_struct* mm, uint_t error_code, uintptr_t addr)->vmm.c /
     find_vma(struct mm_struct* mm, uintptr_t addr) 获取对应内存区域->defs.h /
-    #ROUNDDOWN(a, n) 对齐到页，获取页基地址->pmm.c /
+#ROUNDDOWN(a, n) 对齐到页，获取页基地址->pmm.c /
     get_pte(pde_t* pgdir, uintptr_t la, bool create) 获取或分配与虚拟地址相关联的页表项->pmm.c /
     pgdir_alloc_page(pde_t* pgdir, uintptr_t la, uint32_t perm) 为首次访问的虚拟地址分配物理页并建立映射->swap.c /
     swap_in(mm, addr, &page);
@@ -29,5 +29,5 @@ mmu检测非法PTE_V->trap.c / trap(struct trapframe* tf)->trap.c / exception_ha
     pgdir_alloc_page(pde_t* pgdir, uintptr_t la, uint32_t perm) 9. swap.c / swap_in(mm, addr, &page) 10. pmm.c /
     page_insert(pde_t* pgdir, struct Page* page, uintptr_t la, uint32_t perm) 11. swap.c /
     swap_map_swappable(struct mm_struct* mm, uintptr_t addr, struct Page* page, int swap_in) 12. pmm.h /
-    #alloc_page() 13. pmm.c / alloc_pages() 14. swap.c / swap_out(struct mm_struct* mm, int n, int in_tick) 15. ide.c /
+#alloc_page() 13. pmm.c / alloc_pages() 14. swap.c / swap_out(struct mm_struct* mm, int n, int in_tick) 15. ide.c /
     ide_read_secs(unsigned short ideno, uint32_t secno, void* dst, size_t nsecs)

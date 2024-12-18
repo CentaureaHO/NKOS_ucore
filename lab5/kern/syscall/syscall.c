@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <pmm.h>
 #include <assert.h>
-//这里把系统调用进一步转发给proc.c的do_exit(), do_fork()等函数
+// 这里把系统调用进一步转发给proc.c的do_exit(), do_fork()等函数
 static int sys_exit(uint64_t arg[])
 {
     int error_code = (int)arg[0];
@@ -76,8 +76,8 @@ void syscall(void)
 {
     struct trapframe* tf = current->tf;
     uint64_t          arg[5];
-    int               num = tf->gpr.a0;//a0寄存器保存了系统调用编号
-    if (num >= 0 && num < NUM_SYSCALLS)//防止syscalls[num]下标越界
+    int               num = tf->gpr.a0;  // a0寄存器保存了系统调用编号
+    if (num >= 0 && num < NUM_SYSCALLS)  // 防止syscalls[num]下标越界
     {
         if (syscalls[num] != NULL)
         {
@@ -87,11 +87,11 @@ void syscall(void)
             arg[3]     = tf->gpr.a4;
             arg[4]     = tf->gpr.a5;
             tf->gpr.a0 = syscalls[num](arg);
-            //把寄存器里的参数取出来，转发给系统调用编号对应的函数进行处理
+            // 把寄存器里的参数取出来，转发给系统调用编号对应的函数进行处理
             return;
         }
     }
-    //如果执行到这里，说明传入的系统调用编号还没有被实现，就崩掉了。
+    // 如果执行到这里，说明传入的系统调用编号还没有被实现，就崩掉了。
     print_trapframe(tf);
     panic("undefined syscall %d, pid = %d, name = %s.\n", num, current->pid, current->name);
 }

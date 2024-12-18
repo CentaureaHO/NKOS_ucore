@@ -375,38 +375,45 @@ int copy_range(pde_t* to, pde_t* from, uintptr_t start, uintptr_t end, bool shar
             // get page from ptep
             struct Page* page = pte2page(*ptep);
             // alloc a page for process B
-            struct Page* npage = alloc_page();
             assert(page != NULL);
-            assert(npage != NULL);
             int ret = 0;
-            /* LAB5:EXERCISE2 你的代码
-        * 将页面的内容复制到 npage，建立物理地址映射
-        * nage 和线性地址的起始地址的映射
-        *
-        * 一些有用的宏和定义，你可以在下面的实现中使用它们：
-        * 宏或函数：
-        *    page2kva(struct Page *page): 返回该页面管理的内存的内核虚拟地址（见 pmm.h）
-        *    page_insert: 构建一个 Page 的物理地址与线性地址 la 的映射
-        *    memcpy: 常见的内存拷贝函数
-        *
-        * (1) 找到 src_kvaddr：页面的内核虚拟地址
-        * (2) 找到 dst_kvaddr：npage 的内核虚拟地址
-        * (3) 从 src_kvaddr 到 dst_kvaddr 进行内存拷贝，大小为 PGSIZE
-        * (4) 使用线性地址的起始地址构建 nage 的物理地址映射
-        */
-            //(1) 找到 src_kvaddr：页面的内核虚拟地址
-            uintptr_t src_kvaddr = page2kva(page);
-            //(2) 找到 dst_kvaddr：npage 的内核虚拟地址
-            uintptr_t dst_kvaddr = page2kva(npage);
-            //(3) 从 src_kvaddr 到 dst_kvaddr 进行内存拷贝，大小为 PGSIZE
-            memcpy(dst_kvaddr, src_kvaddr, PGSIZE);
-            //(4) 使用线性地址的起始地址构建 nage 的物理地址映射
-            ret = page_insert(to, npage, start, perm);
-            //if (ret != 0) { return ret; }
-            
-            
 
-            assert(ret == 0);
+            if (share)
+            {
+                page_insert(from, page, start, perm & ~PTE_W);
+                ret = page_insert(to, page, start, perm & ~PTE_W);
+            }
+            else
+            {
+                struct Page* npage = alloc_page();
+                assert(npage != NULL);
+                /* LAB5:EXERCISE2 你的代码
+                 * 将页面的内容复制到 npage，建立物理地址映射
+                 * nage 和线性地址的起始地址的映射
+                 *
+                 * 一些有用的宏和定义，你可以在下面的实现中使用它们：
+                 * 宏或函数：
+                 *    page2kva(struct Page *page): 返回该页面管理的内存的内核虚拟地址（见 pmm.h）
+                 *    page_insert: 构建一个 Page 的物理地址与线性地址 la 的映射
+                 *    memcpy: 常见的内存拷贝函数
+                 *
+                 * (1) 找到 src_kvaddr：页面的内核虚拟地址
+                 * (2) 找到 dst_kvaddr：npage 的内核虚拟地址
+                 * (3) 从 src_kvaddr 到 dst_kvaddr 进行内存拷贝，大小为 PGSIZE
+                 * (4) 使用线性地址的起始地址构建 nage 的物理地址映射
+                 */
+                //(1) 找到 src_kvaddr：页面的内核虚拟地址
+                uintptr_t src_kvaddr = page2kva(page);
+                //(2) 找到 dst_kvaddr：npage 的内核虚拟地址
+                uintptr_t dst_kvaddr = page2kva(npage);
+                //(3) 从 src_kvaddr 到 dst_kvaddr 进行内存拷贝，大小为 PGSIZE
+                memcpy(dst_kvaddr, src_kvaddr, PGSIZE);
+                //(4) 使用线性地址的起始地址构建 nage 的物理地址映射
+                ret = page_insert(to, npage, start, perm);
+                // if (ret != 0) { return ret; }
+
+                assert(ret == 0);
+            }
         }
         start += PGSIZE;
     } while (start != 0 && start < end);

@@ -188,7 +188,7 @@ int dup_mmap(struct mm_struct* to, struct mm_struct* from)
 
         insert_vma_struct(to, nvma);
 
-        bool share = 0;
+        bool share = 1;
         if (copy_range(to->pgdir, from->pgdir, vma->vm_start, vma->vm_end, share) != 0) { return -E_NO_MEM; }
     }
     return 0;
@@ -424,40 +424,67 @@ int do_pgfault(struct mm_struct* mm, uint_t error_code, uintptr_t addr)
     }
     else
     {
-        /*LAB3 EXERCISE 3: YOUR CODE
-         * 请你根据以下信息提示，补充函数
-         * 现在我们认为pte是一个交换条目，那我们应该从磁盘加载数据并放到带有phy addr的页面，
-         * 并将phy addr与逻辑addr映射，触发交换管理器记录该页面的访问情况
-         *
-         *  一些有用的宏和定义，可能会对你接下来代码的编写产生帮助(显然是有帮助的)
-         *  宏或函数:
-         *    swap_in(mm, addr, &page) : 分配一个内存页，然后根据
-         *    PTE中的swap条目的addr，找到磁盘页的地址，将磁盘页的内容读入这个内存页
-         *    page_insert ： 建立一个Page的phy addr与线性addr la的映射
-         *    swap_map_swappable ： 设置页面可交换
-         */
-        if (swap_init_ok)
+        if (*ptep & PTE_V)
         {
-            struct Page* page = NULL;
-            // (1) 根据 mm 和 addr，尝试将对应磁盘页的内容加载到内存中管理的页内。
-            swap_in(mm, addr, &page);
-            // (2) 根据 mm、addr 和 page，设置物理地址 <--> 逻辑地址的映射关系。
-            page_insert(mm->pgdir, page, addr, perm);
-            // (3) 使该页可以交换（swappable）。
+            // 在只读页上写，改为可写（仅有一个引用），或复制
+            struct Page* page = pte2page(*ptep);
+            assert(page_ref(page) > 0);
+
+            int ref = page_ref(page);
+            cprintf("Write on a read-only page %x, with ref %d. ", addr, ref);
+
+            if (page_ref(page) == 1)
+            {
+                cprintf("Change the page to writable\n");
+                page_insert(mm->pgdir, page, addr, perm);
+            }
+            else
+            {
+                cprintf("Copy the page\n");
+                struct Page* newPage = pgdir_alloc_page(mm->pgdir, addr, perm);
+                memcpy(page2kva(newPage), page2kva(page), PGSIZE);
+            }
+
             swap_map_swappable(mm, addr, page, 1);
             page->pra_vaddr = addr;
         }
         else
         {
-            cprintf("no swap_init_ok but ptep is %x, failed\n", *ptep);
-            goto failed;
+            /*LAB3 EXERCISE 3: 2210878 2210983 2213040
+             * 请你根据以下信息提示，补充函数
+             * 现在我们认为pte是一个交换条目，那我们应该从磁盘加载数据并放到带有phy addr的页面，
+             * 并将phy addr与逻辑addr映射，触发交换管理器记录该页面的访问情况
+             *
+             *  一些有用的宏和定义，可能会对你接下来代码的编写产生帮助(显然是有帮助的)
+             *  宏或函数:
+             *    swap_in(mm, addr, &page) : 分配一个内存页，然后根据
+             *    PTE中的swap条目的addr，找到磁盘页的地址，将磁盘页的内容读入这个内存页
+             *    page_insert ： 建立一个Page的phy addr与线性addr la的映射
+             *    swap_map_swappable ： 设置页面可交换
+             */
+            if (swap_init_ok)
+            {
+                struct Page* page = NULL;
+                // (1) 根据 mm 和 addr，尝试将对应磁盘页的内容加载到内存中管理的页内。
+                swap_in(mm, addr, &page);
+                // (2) 根据 mm、addr 和 page，设置物理地址 <--> 逻辑地址的映射关系。
+                page_insert(mm->pgdir, page, addr, perm);
+                // (3) 使该页可以交换（swappable）。
+                swap_map_swappable(mm, addr, page, 1);
+                page->pra_vaddr = addr;
+            }
+            else
+            {
+                cprintf("no swap_init_ok but ptep is %x, failed\n", *ptep);
+                goto failed;
+            }
         }
     }
     ret = 0;
 failed:
     return ret;
 }
-//检查从addr开始长为len的一段内存能否被用户态程序访问
+// 检查从addr开始长为len的一段内存能否被用户态程序访问
 bool user_mem_check(struct mm_struct* mm, uintptr_t addr, size_t len, bool write)
 {
     if (mm != NULL)

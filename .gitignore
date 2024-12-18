@@ -7,3 +7,4 @@ lab[0-9]*/.projectile
 lab[0-9]*/.priority.log
 lab[0-9]*/.matrix.log
 .vscode/
+*/*.log
