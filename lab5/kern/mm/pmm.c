@@ -375,10 +375,19 @@ int copy_range(pde_t* to, pde_t* from, uintptr_t start, uintptr_t end, bool shar
             // get page from ptep
             struct Page* page = pte2page(*ptep);
             // alloc a page for process B
-            struct Page* npage = alloc_page();
+            //struct Page* npage = alloc_page();
             assert(page != NULL);
-            assert(npage != NULL);
+            //assert(npage != NULL);
             int ret = 0;
+
+
+            if(share){
+                page_insert(from,page,start,perm & (~PTE_W));
+                ret=page_insert(to,page,start,perm & (~PTE_W));
+            }else{
+               struct Page *npage=alloc_page();
+               assert(npage!=NULL);
+               
             /* LAB5:EXERCISE2 你的代码
         * 将页面的内容复制到 npage，建立物理地址映射
         * nage 和线性地址的起始地址的映射
@@ -404,7 +413,7 @@ int copy_range(pde_t* to, pde_t* from, uintptr_t start, uintptr_t end, bool shar
             ret = page_insert(to, npage, start, perm);
             //if (ret != 0) { return ret; }
             
-            
+            }
 
             assert(ret == 0);
         }
