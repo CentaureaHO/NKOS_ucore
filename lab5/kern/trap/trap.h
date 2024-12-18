@@ -5,38 +5,38 @@
 
 struct pushregs
 {
-    uintptr_t zero;  // Hard-wired zero
-    uintptr_t ra;    // Return address
-    uintptr_t sp;    // Stack pointer
-    uintptr_t gp;    // Global pointer
-    uintptr_t tp;    // Thread pointer
-    uintptr_t t0;    // Temporary
-    uintptr_t t1;    // Temporary
-    uintptr_t t2;    // Temporary
-    uintptr_t s0;    // Saved register/frame pointer
-    uintptr_t s1;    // Saved register
-    uintptr_t a0;    // Function argument/return value
-    uintptr_t a1;    // Function argument/return value
-    uintptr_t a2;    // Function argument
-    uintptr_t a3;    // Function argument
-    uintptr_t a4;    // Function argument
-    uintptr_t a5;    // Function argument
-    uintptr_t a6;    // Function argument
-    uintptr_t a7;    // Function argument
-    uintptr_t s2;    // Saved register
-    uintptr_t s3;    // Saved register
-    uintptr_t s4;    // Saved register
-    uintptr_t s5;    // Saved register
-    uintptr_t s6;    // Saved register
-    uintptr_t s7;    // Saved register
-    uintptr_t s8;    // Saved register
-    uintptr_t s9;    // Saved register
-    uintptr_t s10;   // Saved register
-    uintptr_t s11;   // Saved register
-    uintptr_t t3;    // Temporary
-    uintptr_t t4;    // Temporary
-    uintptr_t t5;    // Temporary
-    uintptr_t t6;    // Temporary
+    uintptr_t zero;  // 硬编码零
+    uintptr_t ra;    // 返回地址
+    uintptr_t sp;    // 栈指针
+    uintptr_t gp;    // 全局指针
+    uintptr_t tp;    // 线程指针
+    uintptr_t t0;    // 临时寄存器
+    uintptr_t t1;    // 临时寄存器
+    uintptr_t t2;    // 临时寄存器
+    uintptr_t s0;    // 保存的寄存器/帧指针
+    uintptr_t s1;    // 保存的寄存器
+    uintptr_t a0;    // 函数参数/返回值
+    uintptr_t a1;    // 函数参数/返回值
+    uintptr_t a2;    // 函数参数
+    uintptr_t a3;    // 函数参数
+    uintptr_t a4;    // 函数参数
+    uintptr_t a5;    // 函数参数
+    uintptr_t a6;    // 函数参数
+    uintptr_t a7;    // 函数参数
+    uintptr_t s2;    // 保存的寄存器
+    uintptr_t s3;    // 保存的寄存器
+    uintptr_t s4;    // 保存的寄存器
+    uintptr_t s5;    // 保存的寄存器
+    uintptr_t s6;    // 保存的寄存器
+    uintptr_t s7;    // 保存的寄存器
+    uintptr_t s8;    // 保存的寄存器
+    uintptr_t s9;    // 保存的寄存器
+    uintptr_t s10;   // 保存的寄存器
+    uintptr_t s11;   // 保存的寄存器
+    uintptr_t t3;    // 临时寄存器
+    uintptr_t t4;    // 临时寄存器
+    uintptr_t t5;    // 临时寄存器
+    uintptr_t t6;    // 临时寄存器
 };
 
 struct trapframe
