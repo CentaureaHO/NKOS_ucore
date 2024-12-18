@@ -10,6 +10,10 @@ int main(void)
     if ((pid = fork()) == 0)
     {
         cprintf("I am the child.\n");
+        uintptr_t* p = 0x800588;
+        cprintf("*p = 0x%x\n", *p);
+        *p = 0x222;
+        cprintf("*p = 0x%x\n", *p);
         yield();
         yield();
         yield();

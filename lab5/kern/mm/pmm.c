@@ -380,8 +380,13 @@ int copy_range(pde_t* to, pde_t* from, uintptr_t start, uintptr_t end, bool shar
 
             if (share)
             {
-                page_insert(from, page, start, perm & ~PTE_W);
-                ret = page_insert(to, page, start, perm & ~PTE_W);
+                *ptep &= ~PTE_W;
+                uint32_t     perm = (*ptep & PTE_USER & ~PTE_W);
+                struct Page* page = pte2page(*ptep);
+                assert(page != NULL);
+                int ret = 0;
+                ret     = page_insert(to, page, start, perm);
+                assert(ret == 0);
             }
             else
             {

@@ -424,29 +424,32 @@ int do_pgfault(struct mm_struct* mm, uint_t error_code, uintptr_t addr)
     }
     else
     {
-        if (*ptep & PTE_V)
+        if ((*ptep & PTE_V) & ~(*ptep & PTE_W))
         {
-            // 在只读页上写，改为可写（仅有一个引用），或复制
+            int    ret        = 0;
+            pte_t* ptep       = NULL;
+            ptep              = get_pte(mm->pgdir, addr, 0);
+            uint32_t     perm = (*ptep & PTE_USER) | PTE_W;
             struct Page* page = pte2page(*ptep);
-            assert(page_ref(page) > 0);
+            cprintf("Write on a read only page %x with ref %d\n", addr, page_ref(page));
 
-            int ref = page_ref(page);
-            cprintf("Write on a read-only page %x, with ref %d. ", addr, ref);
-
-            if (page_ref(page) == 1)
+            if (page_ref(page) >= 2)
             {
-                cprintf("Change the page to writable\n");
-                page_insert(mm->pgdir, page, addr, perm);
+                struct Page* npage = alloc_page();
+                assert(page != NULL);
+                assert(npage != NULL);
+                uintptr_t* src = page2kva(page);
+                uintptr_t* dst = page2kva(npage);
+                memcpy(dst, src, PGSIZE);
+                uintptr_t start = ROUNDDOWN(addr, PGSIZE);
+                *ptep           = 0;
+                ret             = page_insert(mm->pgdir, npage, start, perm);
+                ptep            = get_pte(mm->pgdir, addr, 0);
             }
             else
-            {
-                cprintf("Copy the page\n");
-                struct Page* newPage = pgdir_alloc_page(mm->pgdir, addr, perm);
-                memcpy(page2kva(newPage), page2kva(page), PGSIZE);
-            }
+                page_insert(mm->pgdir, page, addr, perm);
 
-            swap_map_swappable(mm, addr, page, 1);
-            page->pra_vaddr = addr;
+            return ret;
         }
         else
         {
